@@ -18,6 +18,6 @@ Things to note:
 
 6. The kernel design is a fairly pure microkernel; All library calls happen in the context of the calling task, messages should be handled in the context of the receiving task (devices have mechanisms to get around this).
 
-7. No memory protection, any task can access any memory. Don't rely on it always being like this, only access memory obtained via the executive interface (always manipulate data structures via the documented interface), and don't try to access messages if they are not in the possession of that task. Its might work now, it won't work in future. 
+7. No memory protection, any task can access any memory address. Don't rely on it always being like this, only access memory obtained via the executive interface (always manipulate data structures via the documented interface), and don't try to access messages if they are not in the possession of that task. Its might work now, it won't work in future. 
 
 8. There is no documentation... yet :-)
