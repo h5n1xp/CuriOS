@@ -1,6 +1,6 @@
 # Read Me
 
-The Zip file here is the bootable hard disk image of the December 8th Build of CuriOS... Source code to follow.
+The Zip file here is the bootable hard disk image of the December 15th Build of CuriOS... Source code to follow.
 
 This includes a source snapshot as of the 07 - 12 - 2020. 
 
