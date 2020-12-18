@@ -6,6 +6,11 @@ This includes a source snapshot as of the 18 - 12 - 2020.
 
 ![Screen shot](https://github.com/h5n1xp/CuriOS/blob/main/ScreenShot.png)
 
+Classic Mac Theme:
+![Classic Mac](https://github.com/h5n1xp/CuriOS/blob/main/ScreenShot1.png)
+
+AmigaOS3.0 Theme:
+![Amiga3](https://github.com/h5n1xp/CuriOS/blob/main/ScreenShot2.png)
 
 Things to note:
 1. All components (libraries, devices, and tasks) are currently in a "primeval" state, that is to say they do not follow the normal initialisation process. Since they are compiled together a single blob, they have access to name-spaces that they will normally access via the executive controlled interface, also they must be initialised either by the startup "kernel thread", or the boot task. This would normally be handled by the executive upon loading from disk.
