@@ -4,7 +4,7 @@ The Zip file here is the bootable hard disk image of the December 18th Build of 
 
 This includes a source snapshot as of the 18 - 12 - 2020. 
 
-The graphical user interface can be "themed", in one of three built in themes, to be selected at compile time to suit the user's preference.
+The graphical user interface can be "themed", in the style of one of three built in themes, which can be selected at compile time to suit the user's preference.
 
 Normal Theme:
 ![Screen shot](https://github.com/h5n1xp/CuriOS/blob/main/ScreenShot.png)
