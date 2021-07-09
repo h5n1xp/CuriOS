@@ -1,8 +1,8 @@
 # Read Me
 
-The Zip file here is the bootable hard disk image of the December 18th Build of CuriOS... Source code to follow.
+The Zip files here are the bootable hard disk image of the July 9th, 2021 Build of CuriOS... Source code to follow.
 
-This includes a source snapshot as of the 18 - 12 - 2020. 
+This includes a source snapshot as of the 09 - 07 - 2021. 
 
 The graphical user interface can be "themed", in the style of one of three built in themes, which can be selected at compile time to suit the user's preference.
 
