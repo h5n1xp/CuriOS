@@ -1,8 +1,10 @@
 # Read Me
 
-The Zip files here are the bootable hard disk image of the July 9th, 2021 Build of CuriOS... Source code to follow.
+The Zip files here are the bootable hard disk image of the July 13th, 2021 Build of CuriOS... Source code to follow.
 
-This includes a source snapshot as of the 09 - 07 - 2021. 
+This includes a source snapshot as of the 13 - 07 - 2021. 
+
+The command shell currently only supports a single command, dir, which allows you to explore the boot disk, it needs a full path starting with the device name which for the boot disk is dh0: so to see the contents of the root one would type dir dh0:
 
 The graphical user interface can be "themed", in the style of one of three built in themes, which can be selected at compile time to suit the user's preference.
 
