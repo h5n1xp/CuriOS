@@ -1,6 +1,6 @@
 # Read Me
 
-The Zip files here are the bootable hard disk image of the July 13th, 2021 Build of CuriOS... Source code to follow.
+The Zip files here are the bootable raw hard disk image (and a VDI for VirtualBox) of the July 13th, 2021 Build of CuriOS...
 
 This includes a source snapshot as of the 13 - 07 - 2021. 
 
