@@ -4,7 +4,7 @@ The Zip files here are the bootable raw hard disk image (and a VDI for VirtualBo
 
 This includes a source snapshot as of the 13 - 07 - 2021. 
 
-The command shell currently only supports a single command, dir, which allows you to explore the boot disk, it needs a full path starting with the device name which for the boot disk is dh0: so to see the contents of the root one would type dir dh0:
+The command shell currently supports a few commands, type help for a full list.
 
 The graphical user interface can be "themed", in the style of one of three built in themes, which can be selected at compile time to suit the user's preference.
 
