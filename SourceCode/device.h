@@ -54,7 +54,6 @@ typedef struct{
     void (*AbortIO)(ioRequest_t*);
     list_t unitList;
     task_t* task;
-    bool isHandler;
 } device_t;
 
 typedef struct{

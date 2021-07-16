@@ -95,6 +95,10 @@ typedef struct dirEntry dirEntry_t;
 fatHandler_t fatHandler;
 
 
+//Forward declare functions
+void getPartitionData(file_t* file, int partitionNumber);
+void getVolumeBootRecord(file_t* file);
+
 
 
 void readBlock(file_t* file, uint32_t block){
@@ -494,34 +498,87 @@ void getVolumeBootRecord(file_t* file){
 
 void FATInit(){
     // called by AddDevice();
-    fatHandler.isMounted = false;
-    fatHandler.device.library.node.name = "fat.handler";
+    //debug_write_string("FAT Handler added\n");
+    fatHandler.handler.isMounted = false;
+    fatHandler.handler.device.library.node.name = "fat.handler";
+    fatHandler.handler.device.library.node.nodeType = NODE_HANDLER;
 
-    }
+}
 
 void FATOpen(library_t* lib){
+    //debug_write_string("FAT Handler opened\n");
     lib->openCount += 1;
+}
+
+void FATClose(library_t* lib){
+    lib->openCount -= 1;
 }
 
 int MountHandler(dosEntry_t* entry){
 
     entry->isAlias = false;
-    fatHandler.isMounted = true;
+    fatHandler.handler.isMounted = true;
+    
+    
+    
+    messagePort_t* dosPort = executive->thisTask->dosPort;
+    //need to create a temporary file_t structure as all DOS/Handler operations rely on one.
+    file_t* root = (file_t*)executive->Alloc(sizeof(file_t)); //remember to dealloc this at the end of the DOS init
+    root->node.nodeType = NODE_FILE_DESCRIPTOR;
+    root->isDIR = true; //Because the root is a directory :-)
+    root->request = executive->CreateIORequest(dosPort, sizeof(ioRequest_t));
+    root->entry = entry;
+    
+    // At this point we need to call the Handler's mount function which should perform the setup done below
+    // Need to add an Open Handler function to Exec to open a device as a library?
+    //
+    //
+    
+    //now we have a valid IO Request, open the ata.device, remember to close the device at the end of the DOS init
+    if(executive->OpenDevice(entry->deviceName, entry->unitNumber,root->request,0)){
+        debug_write_string("FAT Handler: No Hard Disk!!!\n");
+        
+        //Need to do the Clean DOS init clean up!!!
+        executive->Dealloc((node_t*)root->request); //deallocate the IORequest
+        executive->Dealloc((node_t*)root);
+        
+        return -1; // This means error
+    }
+
+    //Since the device opened OK, Allocate a one 512byte buffer for the File IORequest
+    uint8_t* buffer = executive->AllocMem(512,0);
+    root->request->data = buffer;
+    
+    
+    //get location of first partition, which will be our Boot partition
+    getPartitionData(root, 0);
+
+    //Examine(root);
+    
+    //file_t clean up! Essentially DOS close()
+    executive->CloseDevice(root->request);      //close the ata device
+    executive->FreeMem(root->request->data);    //free the memory used by the IORequest
+    executive->Dealloc((node_t*)root->request); //deallocate the IORequest
+    executive->Dealloc((node_t*)root);          //deallocate the file structure node
+    
+    //Everything ok...
     return 0;
 }
 
 void UnmountHandler(dosEntry_t* entry){
 
     entry->isAlias = false;
-    fatHandler.isMounted = true;
+    fatHandler.handler.isMounted = false;
     
 }
 
 
 void LoadFATHandler(){
-    fatHandler.device.library.Init  = FATInit;
-    fatHandler.device.library.Open  = FATOpen;
-    fatHandler.device.isHandler     = true;
-    fatHandler.Mount                = MountHandler;
-    fatHandler.Unmount              = UnmountHandler;
+    fatHandler.handler.device.library.Init  = FATInit;
+    fatHandler.handler.device.library.Open  = FATOpen;
+    fatHandler.handler.device.library.Close = FATClose;
+    fatHandler.handler.Mount                = MountHandler;
+    fatHandler.handler.Unmount              = UnmountHandler;
+    fatHandler.handler.ReadDir              = readDir;
+    fatHandler.handler.LoadFileAtCluster    = LoadFileAtCluster; //loads the complete file into memory
 }

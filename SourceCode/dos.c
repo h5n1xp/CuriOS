@@ -9,13 +9,63 @@
 #include "memory.h"
 
 #include "ata.h"
-#include "fat_handler.h"    //DOS calls the FAT functions directly until we have a proper handler
+#include "handler.h"
 #include "string.h"
 
 #include "SystemLog.h"
 
 dos_t dos;
 
+//***************** ELF LOADING STRUCTURES
+
+typedef struct {
+    unsigned char     e_ident[16];      // The first uin32_t should = 1179403647 and this is ".ELF"
+    uint16_t          e_type;           // This need to be 1 as that is a relocatable type which we use
+    uint16_t          e_machine;        // This should be 3 for i386 (4 for 68000)
+    uint32_t          e_version;        // Always 1
+    uint32_t          e_entry;          // N/A
+    uint32_t          e_phoff;          // N/A
+    uint32_t          e_shoff;          // Where the program sections reside
+    uint32_t          e_flags;          // N/A
+    uint16_t          e_ehsize;         // The size of this header (52bytes)
+    uint16_t          e_phentsize;      // N/A
+    uint16_t          e_phnum;          // N/A
+    uint16_t          e_shentsize;      // Section header size
+    uint16_t          e_shnum;          // Number of Sections
+    uint16_t          e_shstrndx;       // string table
+} Elf32_Header_t;
+
+typedef struct {
+    uint32_t    sh_name;    //offset into string table
+    uint32_t    sh_type;
+    uint32_t    sh_flags;
+    uint32_t    sh_addr;
+    uint32_t    sh_offset;
+    uint32_t    sh_size;
+    uint32_t    sh_link;
+    uint32_t    sh_info;
+    uint32_t    sh_addralign;
+    uint32_t    sh_entsize;
+} Elf32_Section_Header_t;
+
+typedef struct {
+    uint32_t        st_name;    //offset into string table
+    uint32_t        st_value;
+    uint32_t        st_size;    //symbol size in bytes
+    unsigned char   st_info;
+    unsigned char   st_other;
+    uint16_t        st_shndx;
+} Elf32_Symbol_t;
+
+typedef struct{
+    void (*Call)(void);
+} exec_t;
+
+exec_t test;
+
+void Test(void){
+    debug_write_string("This Happened!\n");
+}
 
 
 //forward declare this function
@@ -103,8 +153,9 @@ file_t* Open(char* fileName, uint64_t attributes){
         dev[i] = fileName[i];
     }
     dev[devNameLen] = 0;
-    toLower(dev);
-
+    tolower(dev);
+    
+    
     
     //now to get the path.
     int j = 0;
@@ -155,7 +206,8 @@ file_t* Open(char* fileName, uint64_t attributes){
     
     //need to Open the underlying device, likely the ata.device
     //save the IORequest into the file_t structure.
-    file_t* file = (file_t*)executive->Alloc(sizeof(file_t)); //remember to dealloc this at the end of the DOS init
+    file_t* file = (file_t*)executive->Alloc(sizeof(file_t));
+    file->node.nodeType = NODE_FILE_DESCRIPTOR;
     file->request = executive->CreateIORequest(executive->thisTask->dosPort, sizeof(ioRequest_t));
     file->entry = entry;
     //debug_write_string("allocated a file structure\n");
@@ -215,6 +267,9 @@ file_t* Open(char* fileName, uint64_t attributes){
     
     //debug_write_string("preparing to scan root\n");
     
+    //Get the handler
+    handler_t* handler = (handler_t*) file->entry->handler;
+    
     //debug_write_string("DOS Library: Reading Root\n\n");
     directoryStruct_t* ds = NULL;
     
@@ -224,7 +279,8 @@ file_t* Open(char* fileName, uint64_t attributes){
     bool sucess;
     do{
         sucess = false;
-        ds = readDir(file,clusterNumber);
+        //ds = readDir(file,clusterNumber);
+        ds = handler->ReadDir(file,clusterNumber);
         
         if(ds==NULL){
             debug_write_string("ERROR!!! CAN'T READ DIR at block"); debug_putchar(clusterNumber);debug_putchar('\n');
@@ -281,6 +337,19 @@ void Close(file_t* file){
 }
 
 
+
+int Read(file_t* file, void* buffer, uint32_t count){
+    
+    debug_write_string(file->fileName);
+    debug_write_dec((uint32_t)buffer);
+    debug_write_dec(count);
+    
+    return 0;
+}
+
+
+
+
 directoryStruct_t* Examine(file_t* dir){
     executive->thisTask->dosError = DOS_ERROR_NO_ERROR;
     
@@ -289,18 +358,103 @@ directoryStruct_t* Examine(file_t* dir){
         return NULL;
     }
     
-    directoryStruct_t* ds = readDir(dir,dir->startBlock);
+    //Get the handler
+    handler_t* handler = (handler_t*) dir->entry->handler;
+    
+    directoryStruct_t* ds = handler->ReadDir(dir,dir->startBlock);
 
     return ds;
 }
 
 
+
 uint8_t* LoadFile(file_t* file){
-    return LoadFileAtCluster(file,file->startBlock);
+    
+    //Get the handler
+    handler_t* handler = (handler_t*) file->entry->handler;
+    
+    return handler->LoadFileAtCluster(file,file->startBlock);
 }
 
 
-
+//************************* LOAD RELOCATABLE ELF OBJECTS
+void LoadELF(file_t* file){
+    executive->thisTask->dosError = DOS_ERROR_NO_ERROR;
+    //debug_write_string("loading File\n");
+    
+    if(file->isDIR){
+        executive->thisTask->dosError = DOS_ERROR_OBJECT_NOT_OF_REQUIRED_TYPE;
+        return;
+    }
+    
+    //Get the handler
+    handler_t* handler = (handler_t*) file->entry->handler;
+    
+    uint8_t* buffer = handler->LoadFileAtCluster(file,file->startBlock);
+    
+    uint32_t* check = (uint32_t*)buffer;
+    
+    //is this a valid ELF file?
+    if(*check != 1179403647){
+        debug_write_string("File Not Executable\n");
+        executive->FreeMem(buffer);
+        return;
+    }
+    
+    if(buffer[4] != 1){
+        debug_write_string("Can't Load 64bit files\n");
+        executive->FreeMem(buffer);
+        return;
+    }
+    
+    if(buffer[5] != 1){
+        debug_write_string("Can't Load Big Endian files\n");
+        executive->FreeMem(buffer);
+        return;
+    }
+    
+    //It's a vaild ELF
+    Elf32_Header_t* header = (Elf32_Header_t*) buffer;
+    
+    //Check it is for this CPU
+    if(header->e_machine != 3){
+        debug_write_string("File not x86 executable\n");
+        executive->FreeMem(buffer);
+        return;
+    }
+  
+    //Check it is a relocatable object
+    if(header->e_type != 1){
+        debug_write_string("File not Relocatable\n");
+        executive->FreeMem(buffer);
+        return;
+    }
+    
+    
+    Elf32_Section_Header_t* sectionTable = (Elf32_Section_Header_t*) &buffer[header->e_shoff];
+    
+    //String Section
+    Elf32_Section_Header_t stringTableHeader = sectionTable[header->e_shstrndx];
+    
+    char* strings = (char*) &buffer[stringTableHeader.sh_offset];
+    
+    //Walk the table, first entry is always NULL
+    debug_write_string("Sections:\n");
+    for(int i=1; i < header->e_shnum; ++i){
+        
+        Elf32_Section_Header_t entry = sectionTable[i];
+        debug_write_dec(i);debug_write_string(": ");
+        debug_write_string(&strings[entry.sh_name]); debug_putchar('\n');
+    }
+    
+    //void (*mn)() = &buffer[64];
+    //uint32_t* rel = &buffer[66];
+    //*rel = (uint32_t)&test;
+    //mn();
+    
+    
+    executive->FreeMem(buffer);
+}
 
 
 void InitDOS(library_t* library){
@@ -309,26 +463,21 @@ void InitDOS(library_t* library){
     InitList(&dos.dosList);
     library->node.name = "dos.library";
  
-    //The DOS.library will need to access the disks
-    //setup the ata device
-    //LoadATADevice();
-    //executive->AddDevice((device_t*)&ata);
     
+    handler_t* fat = executive->OpenHandler("fat.handler",0);
+    //debug_write_hex((uint32_t)fat);debug_putchar('\n');
     
-    
-
-    
-    //The boot disk will be FAT32
-    LoadFATHandler();
-    executive->AddDevice((device_t*)&fatHandler);
     
     debug_write_string("DOS Library: Setting up hard disk device... dh0: \n");
     
-    //Add a FAT file system handler to DOS on top of the ATA device, first partition.
+    //Add a FAT file system handler to DOS, which sits on top of the ATA device, first partition.
     node_t* node                    = executive->Alloc(sizeof(dosEntry_t));
+    node->nodeType                  = NODE_DOS_ENTRY;
     node->name                      = "dh0";
     dosEntry_t* bootDOSEntry        = (dosEntry_t*)node;
-    bootDOSEntry->handlerName       = "fat.handler";
+    
+    //bootDOSEntry->handlerName       = "fat.handler";
+    bootDOSEntry->handler           = (library_t*)fat;
     bootDOSEntry->handlerNumber     = 0;
     bootDOSEntry->deviceName        = "ata.device";
     bootDOSEntry->unitNumber        = 0;
@@ -341,6 +490,25 @@ void InitDOS(library_t* library){
     executive->thisTask->dosPort = dosPort;
     
     
+    
+    
+    if(fat->Mount(bootDOSEntry)){;
+        //the handler didn't mount :-(
+        return;
+    }
+    //if we get this far the dos entry is vaild, so add it to the doslist!
+    dos.AddDosEntry(bootDOSEntry);
+    
+    //set the progdir to the boot disk
+    executive->thisTask->progdir = executive->AllocMem(5,0); //need 5 bytes, the name plus null
+    strcpy(executive->thisTask->progdir,"dh0:");
+    return;
+    
+    
+    
+    
+    
+    /*
     //need to create a temporary file_t structure as all DOS/Handler operations rely on one.
     file_t* root = (file_t*)executive->Alloc(sizeof(file_t)); //remember to dealloc this at the end of the DOS init
     root->isDIR = true; //Because the root is a directory :-)
@@ -383,6 +551,10 @@ void InitDOS(library_t* library){
    // executive->FreeMem(root->request->data);    //free the memory used by the IORequest
    // executive->Dealloc((node_t*)root->request); //deallocate the IORequest
    // executive->Dealloc((node_t*)root);          //deallocate the file structure node
+    */
+    
+    
+    
 }
 
 
@@ -441,12 +613,15 @@ void AddDosEntry(dosEntry_t* entry){
 
 void LoadDOSLibrary(){
     
-    dos.library.Init    = InitDOS;
-    dos.library.Open    = OpenLib;
-    dos.library.Close   = CloseLib;
-    dos.AddDosEntry     = AddDosEntry;
-    dos.Open            = Open;
-    dos.Close           = Close;
-    dos.Examine         = Examine;
-    dos.LoadFile        = LoadFile;
+    dos.library.node.nodeType   = NODE_LIBRARY;
+    dos.library.Init            = InitDOS;
+    dos.library.Open            = OpenLib;
+    dos.library.Close           = CloseLib;
+    dos.AddDosEntry             = AddDosEntry;
+    dos.Open                    = Open;
+    dos.Close                   = Close;
+    dos.Read                    = Read;
+    dos.Examine                 = Examine;
+    dos.LoadFile                = LoadFile;
+    dos.LoadELF                 = LoadELF;
 }

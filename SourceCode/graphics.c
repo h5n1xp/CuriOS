@@ -729,6 +729,27 @@ void ClearSprite(sprite_t* sprite){
 }
 
 
+
+palette_t* CreatePalette(uint32_t numberOfColours){
+    palette_t* pal = (palette_t*)executive->Alloc( ( sizeof(colour_t) * numberOfColours ) + sizeof(palette_t));
+    pal->node.nodeType = NODE_PALETTE;
+    pal->count = numberOfColours;
+    void* data = pal + 1;
+    pal->colour = (colour_t*)data;
+    return pal;
+}
+void SetColour(palette_t* palette,uint32_t index, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha){
+    palette->colour[index].red = red;
+    palette->colour[index].green = green;
+    palette->colour[index].blue = blue;
+    palette->colour[index].alpha = alpha;
+}
+colour_t GetColour(palette_t* palette, uint32_t index){
+    return palette->colour[index];
+}
+
+
+
 void InitGraphics(library_t* library){
     //perhaps check for a proper gfx card here?
     library->node.nodeType = NODE_LIBRARY;
@@ -789,6 +810,10 @@ void LoadGraphicsLibrary(multiboot_info_t* mbd){
             graphics.DrawVectorImage= DrawVectorImage;
             graphics.BlitRect       = BlitRect;
             graphics.ClearBitmap    = ClearBitmap;
+            
+            graphics.CreatePalette  = CreatePalette;
+            graphics.SetColour      = SetColour;
+            graphics.GetColour      = GetColour;
         }
         
         

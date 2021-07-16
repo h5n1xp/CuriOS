@@ -12,6 +12,7 @@
 #include "memory.h"
 #include "intuition.h"
 
+//This will be the Boot task, so it will bring up the early devices
 #include "ata.h"
 #include "fat_handler.h"
 #include "dos.h"
@@ -329,7 +330,7 @@ char lastCommand[512];
 void reportError(char** arguments){
     
     //debug_write_string("Reporting Error");
-    window_t* req;
+    //window_t* req;
     
     switch(executive->thisTask->dosError){
         case DOS_ERROR_UNKNOWN_DEVICE:
@@ -368,7 +369,7 @@ void reportError(char** arguments){
             ConsoleWriteString(console,"Not a directory!\n");
             break;
         case DOS_ERROR_OBJECT_NOT_OF_REQUIRED_TYPE:
-            ConsoleWriteString(console,"Object not of reiquired type! (Not all devices support filesystem actions)\n");
+            ConsoleWriteString(console,"Object not of required type! (Not all devices support filesystem actions)\n");
             break;
             
         default:
@@ -419,6 +420,23 @@ void processCommand(int commandLength){
         
     }
     
+    //disply the available devices, and add assigns
+    if(strcmp(commandBuffer,"assign") == 0){
+
+        ConsoleWriteString(console,"Devices:\n");
+        
+        
+        list_t* dosList = &dosbase->dosList;
+        node_t* dev = dosList->head;
+        
+        do{
+            ConsoleWriteString(console,dev->name);ConsolePutChar(console,'\n');
+            dev = dev->next;
+        }while(dev->next != NULL);
+    
+        return;
+    }
+    
     
     //Need to set the current directory
     if(strcmp(commandBuffer,"cd") == 0){
@@ -431,7 +449,7 @@ void processCommand(int commandLength){
             if(executive->thisTask->progdir == NULL){
                 ConsoleWriteString(console,"No current directory!\n");
             }else{
-                //ConsoleWriteString(console,"Current directory ");
+                ConsoleWriteString(console," ");
                 ConsoleWriteString(console,executive->thisTask->progdir);
                 ConsolePutChar(console,'\n');
             }
@@ -483,9 +501,6 @@ void processCommand(int commandLength){
         dosbase->Close(file);
         return;
     }
-    
-    
-    
     
     //messy way to implment the dir command :-)
     if(strcmp(commandBuffer,"dir") == 0){
@@ -573,7 +588,7 @@ void processCommand(int commandLength){
     if(strcmp(commandBuffer,"echo") == 0){
         
         if(count > 1){
-            ConsoleWriteString(console,"Openning file:\n");
+           // ConsoleWriteString(console,"Openning file:\n");
             file_t* file = dosbase->Open(arguments[1],0);
             
             if(file == NULL){
@@ -588,7 +603,7 @@ void processCommand(int commandLength){
                     return;
                 }
 
-                ConsoleWriteString(console,"Echoing file:\n");
+                ConsoleWriteString(console," Echoing file:\n");
                 uint8_t* temp = dosbase->LoadFile(file);
 
                 intuibase->SetBusy(console, true); //if the window can't process any events let the user know
@@ -625,13 +640,46 @@ void processCommand(int commandLength){
     
     //A quick way to crash the machine
     if(strcmp(commandBuffer,"help") == 0){
-        ConsoleWriteString(console,"Supported Commands:\n");
-        ConsoleWriteString(console,"  cd   (Usage: cd path) - changes the current path.\n");
-        ConsoleWriteString(console,"  dir  (Usage: dir path) - lists files at the path.\n");
-        ConsoleWriteString(console,"  echo (Usage: echo filename) - echos the contents of a file to the console.\n");
-        ConsoleWriteString(console,"  guru (Usage: guru) - purposely crashes this task.\n");
-        ConsoleWriteString(console,"  help (Usage: help) - prints this help.\n");
+        ConsoleWriteString(console," Supported Commands:\n");
+        ConsoleWriteString(console,"   cd   (Usage: cd path) - changes the current path.\n");
+        ConsoleWriteString(console,"   dir  (Usage: dir path) - lists files at the path.\n");
+        ConsoleWriteString(console,"   echo (Usage: echo filename) - echos the contents of a file to the console.\n");
+        ConsoleWriteString(console,"   guru (Usage: guru) - purposely crashes this task.\n");
+        ConsoleWriteString(console,"   help (Usage: help) - prints this help.\n");
+        ConsoleWriteString(console,"   load (Usage: load filename) - loads a relocatable ELF file into memory... and execute it?\n");
         return;
+    }
+    
+    //Load an ELF Relocatable Object :-)
+    if(strcmp(commandBuffer,"load") == 0){
+        
+        if(count > 1){
+           // ConsoleWriteString(console,"Openning file:\n");
+            file_t* file = dosbase->Open(arguments[1],0);
+            
+            if(file == NULL){
+                
+                reportError(arguments); //print the Dos Error
+                
+            }else{
+            
+                if(file->isDIR){
+                    ConsoleWriteString(console,"Not a file.\n");
+                    dosbase->Close(file);
+                    return;
+                }
+
+                dosbase->LoadELF(file);
+                
+                ConsoleWriteString(console,"\n");
+                dosbase->Close(file);
+            }
+            
+        }else{
+            ConsoleWriteString(console,"Error: No file provided.\n");
+        }
+        
+            return;
     }
     
     ConsoleWriteString(console,"Unknown Command ");
@@ -655,8 +703,12 @@ int CliEntry(void){
     //setup the ata device as early as possible before the DOS Library, if the ATA device isn't ready DOS will hang the machine.
     LoadATADevice();
     executive->AddDevice((device_t*)&ata);
-    //executive->Reschedule();    //Yeld the CPU while the ATA device sets up
+  
+    //The boot disk will be FAT32, so load the FAT Handler
+    LoadFATHandler();
+    executive->AddDevice((device_t*)&fatHandler);
 
+    
     intuibase = (intuition_t*) executive->OpenLibrary("intuition.library",0);
     
     console = intuibase->OpenWindow(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight/2)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");

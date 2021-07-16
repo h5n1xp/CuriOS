@@ -12,7 +12,10 @@
 #include "stdheaders.h"
 
 //Ctype functions
-void toLower(char* str);
+void tolower(char* str);
+
+void toupper(char* str);
+
 
 char* strcpy(char* destination, char* source);
 

@@ -117,8 +117,7 @@ inline bool TestLock(lock_t* lock){
 
 //lock_t memLock;
 
-uint64_t allocationTotal;   // it might make sense to audit the total number of allocations vs deallocations at some point
-uint64_t deallocationTotal;
+
 
 node_t* KAlloc(size_t size){
     
@@ -209,10 +208,24 @@ void Coalesce(node_t* node){
     
     Coalesce(contig);
     
+    
+
+    
+    //lock_t* memLock = &executive->freeList.lock;
+    //if(TestLock(memLock)){
+    //    return;
+    //}
+    
+    //Lock(memLock);
+    
+    //need a better way to lock memory
+    executive->Forbid();
     Remove(&executive->freeList,contig);
     node->nextContigious = contig->nextContigious;
     node->size +=contig->size;
+    executive->Permit();
     
+    //FreeLock(memLock);
     
 }
 
@@ -287,6 +300,7 @@ void* AllocMem(size_t size, uint64_t type){
     size +=sizeof(node_t);
     
     node_t* node = KAlloc(size);
+    node->nodeType = NODE_DATA_BLOCK;
     
     //add this memory allocation to the calling task's memory list
     if(executive->thisTask != NULL){
@@ -319,10 +333,16 @@ library_t* OpenLibrary(char* name,uint64_t version){
 
     library_t* library = (library_t*) FindName(&executive->libraryList,name);
     
+    if(library == NULL){
+        //debug_write_string("Can't find library\n");
+        return NULL;
+    }
+    
     
     //need to check the verion number before returning;
     if(library->version < version){
         //versions don't matter at this time....
+        //return NULL;
     }
     
     
@@ -402,6 +422,31 @@ uint64_t OpenDevice(char* name,uint32_t unitNumber,ioRequest_t* ioRequest,uint64
     
 }
 
+handler_t* OpenHandler(char* name, uint64_t version){
+    
+    //this is just te open library function which seacher the device list.
+    handler_t* handler = (handler_t*) FindName(&executive->deviceList,name);
+    
+    
+    if(handler == NULL){
+        //debug_write_string("Can't find handler\n");
+        return NULL;
+    }
+    //debug_write_string("found handler\n");
+
+     
+    //need to check the verion number before returning;
+    if(handler->device.library.version < version){
+        //versions don't matter at this time....
+        //return NULL;
+    }
+    
+    
+    handler->device.library.Open(&handler->device.library);
+    return handler;
+    
+}
+
 void CloseDevice(ioRequest_t* ioRequest){
     
     device_t* device = ioRequest->device;
@@ -446,6 +491,7 @@ void DoIO(ioRequest_t* req){
     req->device->BeginIO(req);
     
 }
+
 
 
 
@@ -518,6 +564,7 @@ void InitMemory(void* startAddress, uint64_t size){
     //devices
     executive->AddDevice        = AddDevice;
     executive->OpenDevice       = OpenDevice;
+    executive->OpenHandler      = OpenHandler;
     executive->CloseDevice      = CloseDevice;
     executive->DeviceUnitCount  = DeviceUnitCount;
     executive->SendIO           = SendIO;

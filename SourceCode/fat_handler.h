@@ -16,18 +16,12 @@
 #ifndef fat_handler_h
 #define fat_handler_h
 
-#include "stdheaders.h"
-#include "device.h"
-#include "dos.h"
+#include "handler.h"
 
-#include "dosCommonStructures.h"
 
-//this is likely to be the base handler type so will be moved into it'a own c and h files at some point
+
 typedef struct{
-    device_t device;
-    bool isMounted;     //set to true if the handler is mounted
-    int (*Mount)(dosEntry_t* entry);       //perform all the handler set up, opening the device etc... return an error code.
-    void (*Unmount)(dosEntry_t* entry);
+    handler_t handler;
 } fatHandler_t;
 
 
@@ -39,14 +33,19 @@ void LoadFATHandler(void);
 
 
 //Internal functions exposed while the hander features aren't used yet.
-void getPartitionData(file_t* file, int partitionNumber);
-void getVolumeBootRecord(file_t* file);
-void readBlock(file_t* file, uint32_t block);
-directoryStruct_t* readDir(file_t* file,uint32_t block);
-uint8_t* LoadFileAtCluster(file_t* file,uint32_t cluster);  //loads the complete file into memory
+//void getPartitionData(file_t* file, int partitionNumber);
+//void getVolumeBootRecord(file_t* file);
+//void readBlock(file_t* file, uint32_t block);
 
-void SetHandler(dosEntry_t*);
-uint32_t FATGetPartitionLBA(int partitionNumber);
+
+
+//directoryStruct_t* readDir(file_t* file,uint32_t block);
+//uint8_t* LoadFileAtCluster(file_t* file,uint32_t cluster);  //loads the complete file into memory
+
+
+
+//void SetHandler(dosEntry_t*);
+//uint32_t FATGetPartitionLBA(int partitionNumber);
 
 
 

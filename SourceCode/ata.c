@@ -334,7 +334,6 @@ void ATABeginIO(ioRequest_t* req){
         req->flags = 0;
     }
     
-
     executive->PutMessage(req->unit->messagePort,(message_t*)req);
     
 }
@@ -343,11 +342,10 @@ void ATABeginIO(ioRequest_t* req){
 //Too be called only by the Kernel_main as it just sets up the device memory.
 void LoadATADevice(){
     
-    ata.device.library.node.name = "ata.device";
-    ata.device.library.Open = ATAOpen;
-    ata.device.library.Close = ATAClose;
-    ata.device.library.Init = InitATA;
-    ata.device.BeginIO = ATABeginIO;
-    ata.device.isHandler = false;             //The ATA device is not accesible to the file system directly
-    
+    ata.device.library.node.name        = "ata.device";
+    ata.device.library.node.nodeType    = NODE_DEVICE;  // Devices can't be accessed by the file system, handlers can though.
+    ata.device.library.Open             = ATAOpen;
+    ata.device.library.Close            = ATAClose;
+    ata.device.library.Init             = InitATA;
+    ata.device.BeginIO                  = ATABeginIO;
 }

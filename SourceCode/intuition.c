@@ -17,7 +17,20 @@
 #define THEME_MAC 2
 
 
-int guiTheme = THEME_OLD;
+int guiTheme = THEME_NEW;
+
+// time to rewrite the pointer code?
+//the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
+/*
+typedef struct{
+    node_t node;
+    uint32_t type;
+    int width;
+    int height;
+    int scale;
+    uint8_t* image;
+} sprite_t;
+*/
 
 uint8_t oldMousePointer[] ={
 1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,

@@ -15,6 +15,7 @@
 #include "ports.h"
 #include "library.h"
 #include "device.h"
+#include "handler.h"
 
 #include "interrupts.h"
 
@@ -24,6 +25,9 @@ typedef struct{
     uint64_t ticks;
     uint64_t quantum;
     int64_t elapsed;
+    
+    uint64_t allocationTotal;   // it might make sense to audit the total number of allocations vs deallocations at some point
+    uint64_t deallocationTotal;
     
     node_t* (*Alloc)(size_t);       //For allocating node_t types
     void (*Dealloc)(node_t*);       //for deallocating node_t types
@@ -75,6 +79,7 @@ typedef struct{
     //Devices
     void (*AddDevice)(device_t* device);
     uint64_t (*OpenDevice)(char* name,uint32_t unitNumber,ioRequest_t* ioRequest,uint64_t flags);
+    handler_t* (*OpenHandler)(char* name, uint64_t version);
     void (*CloseDevice)(ioRequest_t* ioRequest);
     uint64_t (*DeviceUnitCount)(char* name);
     ioRequest_t* (*CreateIORequest)(messagePort_t* replyPort, uint64_t size);

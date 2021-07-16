@@ -8,7 +8,7 @@
 
 #include "string.h"
 
-void toLower(char* s){
+void tolower(char* s){
     
     uint32_t index = 0;
     
@@ -21,6 +21,22 @@ void toLower(char* s){
     }
     
 }
+
+void toupper(char* s){
+    
+    uint32_t index = 0;
+    
+    while(s[index] != 0 ){
+        
+        if(s[index]>64 && s[index] <100){
+            s[index] &= 223;
+        }
+        index += 1;
+    }
+    
+}
+
+
 
 char* strcpy(char* destination, char* source){
     

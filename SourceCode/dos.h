@@ -27,6 +27,8 @@
 
 //The dosEntry is handler context, this defines what the device looks like to DOS
 //this allows a file system to be set up on a device.
+
+
 typedef struct{
     node_t node;    // The node name is the device name exposed to DOS, i.e. DH0: RAM: etc...
     
@@ -35,9 +37,8 @@ typedef struct{
     char* assignPath;           // if this not NULL, then this is what the Aliased device is substitued with... possibly this should be a "mountpoint"?
     uint32_t dosType;           // information for the handler about the file system type.
     
-    char* handlerName;          //the handler name inth efomr of name.handler
-    library_t* handerBase;      //This is the library which DOS uses to communicate with the device
-    uint32_t handlerNumber;     //usually a partition number
+    library_t* handler;         // This is the handler which DOS uses to communicate with the underlying device
+    uint32_t handlerNumber;     // usually a partition number
     
     char* deviceName;           // this is the name of the underlying hardware device, the device can also be its own handler.
     uint32_t unitNumber;
@@ -71,6 +72,7 @@ typedef struct{
     uint64_t startBlock;    // or in FAT language Cluster number
     dosEntry_t* entry;      // All the DOS device infomation is stored in the entry
     ioRequest_t* request;
+    uint32_t position;      //current read position
 }file_t;
 
 
@@ -80,8 +82,12 @@ typedef struct{
     void (*AddDosEntry)(dosEntry_t* entry);
     file_t* (*Open)(char* fileName, uint64_t attributes);
     void (*Close)(file_t* file);
+    
+    int (*Read)(file_t* file, void* buffer, uint32_t count);
+    
     directoryStruct_t* (*Examine)(file_t* dir);
     uint8_t* (*LoadFile)(file_t* file);
+    void (*LoadELF)(file_t* file);
 }dos_t;
 
 

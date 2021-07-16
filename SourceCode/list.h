@@ -18,18 +18,23 @@ typedef struct node_t node_t;
 #define MEM_TYPE_ALLOC 1
 
 /*----- Node Types -----*/
-#define NODE_UNKNOWN      0
-#define NODE_MEMORY       1
-#define NODE_TASK         2
-#define NODE_LIBRARY      3
-#define NODE_DEVICE       4
-#define NODE_MSGPORT      5
-#define NODE_MESSAGE      6
-#define NODE_BITMAP       7
-#define NODE_WINDOW       8
-#define NODE_GADGET       9
-#define NODE_LIST        10
-#define NODE_FONT        11
+#define NODE_UNKNOWN             0
+#define NODE_MEMORY              1
+#define NODE_TASK                2
+#define NODE_LIBRARY             3
+#define NODE_DEVICE              4
+#define NODE_MSGPORT             5
+#define NODE_MESSAGE             6
+#define NODE_BITMAP              7
+#define NODE_WINDOW              8
+#define NODE_GADGET              9
+#define NODE_LIST               10
+#define NODE_FONT               11
+#define NODE_PALETTE            12
+#define NODE_HANDLER            13
+#define NODE_FILE_DESCRIPTOR    14
+#define NODE_DOS_ENTRY          15
+#define NODE_DATA_BLOCK         16 
 
 typedef struct {
     volatile bool isLocked;

@@ -22,8 +22,24 @@ typedef struct{
     void* buffer;
 } bitmap_t;
 
+
+
+typedef struct{
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+    uint8_t alpha;
+} colour_t;
+
+typedef struct{
+    node_t node;
+    uint32_t count;
+    colour_t* colour;
+} palette_t;
+
 //  simple image format, for sprites, intuition icons/gadgets etc...
 typedef struct{
+    node_t node;
     uint64_t type;
     uint64_t colours;
     uint64_t width;
@@ -38,6 +54,16 @@ typedef struct{
     uint32_t x;
     uint32_t y;
 }Point2D;
+
+
+/*
+typedef struct{
+    node_t node;
+    uint32_t width;
+    uint32_t height;
+    uint8_t* data;
+} font_t;
+*/
 
 extern uint8_t topazNew_font[];
 extern uint8_t topazOld_font[];
@@ -62,6 +88,11 @@ typedef struct{
     void (*ClearBitmap)(bitmap_t* bm,uint32_t rgb);
     void (*DrawSprite)(sprite_t* sprite, uint32_t x, uint32_t y);
     void (*ClearSprite)(sprite_t* sprite);
+    
+    palette_t* (*CreatePalette)(uint32_t numberOfColours);
+    void (*SetColour)(palette_t* palette,uint32_t colour, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
+    colour_t (*GetColour)(palette_t* palette, uint32_t colour);
+    
 }graphics_t;
 
 
