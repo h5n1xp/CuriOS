@@ -8,7 +8,7 @@
 
 #include "graphics.h"
 #include "font.h"
-
+#include "math.h"
 
 graphics_t graphics;
 
@@ -388,16 +388,16 @@ void DrawVerticalLine(bitmap_t* bm, uint32_t x, uint32_t y,uint32_t length, uint
 }
 
 //Quick and dirty asb() function for the line draw alogrythm, replace with a real function
-int32_t absG(int32_t value){
-    
-    if ( value < 0){value = -value;}
-    return value;
-}
+//int32_t absG(int32_t value){
+//
+//    if ( value < 0){value = -value;}
+//    return value;
+//}
 
 void DrawLine(bitmap_t* bm,uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t rgb){
-    int32_t dx =  absG(x1-x0);
+    int32_t dx =  abs(x1-x0);
     int32_t sx = x0<x1 ? 1 : -1;
-    int32_t dy = -absG(y1-y0);
+    int32_t dy = -abs(y1-y0);
     int32_t sy = y0<y1 ? 1 : -1;
     int32_t err = dx+dy;  /* error value e_xy */
     
@@ -475,8 +475,8 @@ void DrawCircle(bitmap_t* bm, uint32_t x0, uint32_t y0, uint32_t r, uint32_t rgb
         int yd1 = (y0 - (y1));
         int d1 = (xd1 * xd1) + (yd1 * yd1);
     
-        int td1 = absG(r1 - d0);
-        int td2 = absG(r1 - d1);
+        int td1 = abs(r1 - d0);
+        int td2 = abs(r1 - d1);
         
         if( td1 < td2 ){
         

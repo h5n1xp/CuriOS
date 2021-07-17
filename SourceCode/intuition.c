@@ -298,7 +298,14 @@ void updateMouse(){
     //Check if the window is busy
     //really this should only check the inner window (window borders shouldn't be busy) and if true then stop processing
     if(windowUnder->isBusy){
-        intuition.mouseImage = intuition.busyMouseImage;
+        
+        //if(windowUnder->mouseX>windowUnder->innerX && windowUnder->mouseX<windowUnder->innerW){
+         //   if(windowUnder->mouseY>windowUnder->innerY && windowUnder->mouseX<windowUnder->innerH){
+                intuition.mouseImage = intuition.busyMouseImage;
+        //    }
+       // }
+        
+        
     }else{
         intuition.mouseImage = intuition.normalMouseImage;
     }

@@ -51,8 +51,8 @@ struct window_t{
     messagePort_t* eventPort;
     bool focused;
     bool needsRedraw;
-    bool noRise;                //no clicking to front
-    bool isBusy;             //window busy, show busy pointer and not receive events
+    bool noRise;             //no clicking to front
+    bool isBusy;             //window busy, show busy pointer and should not receive events
     bitmap_t* bitmap;
     int32_t autoRefeshCountdown;
     list_t gadgetList;

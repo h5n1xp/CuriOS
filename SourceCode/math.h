@@ -10,4 +10,8 @@
 
 #include "stdheaders.h"
 
+int32_t abs(int32_t value);
+
+float hermite(float x, float y0, float y1, float y2, float y3); //simple bicubic interpolation
+
 #endif /* math_h */
