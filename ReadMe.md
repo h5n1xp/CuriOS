@@ -28,16 +28,18 @@ Things to note:
 
 4. The Executive (the public interface of the kernel), is just a composite of various sub components (i.e. memory.h, list.h, task.h, ports.h, etc...) which is constructed during their initialisation, this is due to API being in flux at the moment. I plan to formalise this at some point.
 
-5. There are three fundamental components (everything is built from one of these):
+5. The most basic operating system unit is the node. Everything in the operating system is a node, nodes record their type, their size, and also can have a name string. Nodes may be added to list instance (which is itself a node), but only one list at any given time.
+
+6. There are three fundamental components (everything is built from one of these):
     1. Libraries: these are groups of related functions, these are based on a shared code concept for speed and smallness of memory footprint and are linked at runtime. Currently library calls are generally handled in the context of the calling task, likely this will change and some functions will execute in a separate contex, as each library matures and where it makes sense.
     2. Devices: These are libraries, but with a standard API to support their their message passing interface. Devices generally have an associated task which processes requests asynchronously, and it is this context which requests are processed.
        There is a superset of the device called a handler, this is a device which has extra set of standard functions allowing it to interface with the dos.library, it is not necessary for a handler to have it's own task context as it may be a simple translation layer, filesystems are like this.
     3. Tasks: This the smallest unit of executable code, each task executes in it's own context, all tasks are linked at load time with the executive, but can runtime link with any library available on the system. A task has 64 signals available to it, will execute until it Wait()s for a signal, a which point it won't be scheduled again until a waited signal is received. Signals are low level and not normally used by the developers. Messages are the normal method of IPC, and are built on the signalling system. Currently, tasks all operate at the same level of privilege, but I plan to introduce a privilege system where messages will only be received by a task/device if the calling task has a high enough privilege (this is unrelated the CPU privilege, all tasks execute at the lowest CPU privilege level, only interrupts and the "idle task" execute at the highest CPU privilege).
 
-6. The kernel design is a fairly pure microkernel; Library calls generally happen in the context of the calling task, messages should be handled in the context of the receiving task (devices have mechanisms to get around this).
+7. The kernel design is a fairly pure microkernel; Library calls generally happen in the context of the calling task, messages should be handled in the context of the receiving task (devices have mechanisms to get around this).
 
-7. No memory protection, any task can access any memory address. Don't rely on it always being like this, only access memory obtained via the executive interface (always manipulate data structures via the documented interface), and don't try to access messages if they are not in the possession of that task. Its might work now, it won't work in future. 
+8. No memory protection, any task can access any memory address. Don't rely on it always being like this, only access memory obtained via the executive interface (always manipulate data structures via the documented interface), and don't try to access messages if they are not in the possession of that task. Its might work now, it won't work in future. 
 
-8. There is no documentation... yet :-)
+9. There is no documentation... yet :-)
 
-9. I plan to add an Application framework built on Objective-C using Jonathan Schleifer's Obj-FW runtime. 
+10. I plan to add an Application framework built on Objective-C using Jonathan Schleifer's Obj-FW runtime. 
