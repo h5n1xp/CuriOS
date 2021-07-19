@@ -562,7 +562,7 @@ void InitDOS(library_t* library){
 
 
 
-void OpenLib(library_t* lib){
+library_t* OpenLib(library_t* lib){
     //dos.library.openCount +=1;
     lib->openCount +=1;
     
@@ -573,6 +573,9 @@ void OpenLib(library_t* lib){
     if(task->dosPort == NULL){
         task->dosPort = executive->CreatePort("DOS Port");
     }
+    
+    return lib; // this probably shouldn't be a singleton... but it is for now
+    
 }
 
 

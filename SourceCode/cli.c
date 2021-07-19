@@ -449,7 +449,7 @@ void processCommand(int commandLength){
             if(executive->thisTask->progdir == NULL){
                 ConsoleWriteString(console,"No current directory!\n");
             }else{
-                ConsoleWriteString(console," ");
+                //ConsoleWriteString(console," ");
                 ConsoleWriteString(console,executive->thisTask->progdir);
                 ConsolePutChar(console,'\n');
             }
@@ -680,6 +680,25 @@ void processCommand(int commandLength){
         }
         
             return;
+    }
+    
+    // THese three theming commands don't really work as intution isn't set up for runtime theme swapping yet.
+    if(strcmp(commandBuffer,"themenew") == 0){
+        intuibase->SetTheme(1);
+        ConsoleWriteString(console,"AmigaOS 3.1 theme\n");
+        return;
+    }
+    
+    if(strcmp(commandBuffer,"themeold") == 0){
+        intuibase->SetTheme(0);
+        ConsoleWriteString(console,"AmigaOS 1.3 theme\n");
+        return;
+    }
+    
+    if(strcmp(commandBuffer,"thememac") == 0){
+        intuibase->SetTheme(2);
+        ConsoleWriteString(console,"Classic Mac theme\n");
+        return;
     }
     
     ConsoleWriteString(console,"Unknown Command ");

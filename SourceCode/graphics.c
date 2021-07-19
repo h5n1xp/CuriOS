@@ -756,10 +756,10 @@ void InitGraphics(library_t* library){
     library->node.name  = "graphics.library";
 }
 
-void OpenGraphics(library_t* library){
+library_t* OpenGraphics(library_t* library){
     
     library->openCount += 1;
-    
+    return library;
 }
 
 void LoadGraphicsLibrary(multiboot_info_t* mbd){

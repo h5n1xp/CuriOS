@@ -316,9 +316,10 @@ void InitATA(library_t* lib){
 }
 
 
-void ATAOpen(library_t* lib){
+library_t* ATAOpen(library_t* lib){
     lib->openCount += 1;
     //debug_write_string("ATA Device:Opened!\n");
+    return lib;
 }
 
 void ATAClose(library_t* lib){
@@ -347,5 +348,6 @@ void LoadATADevice(){
     ata.device.library.Open             = ATAOpen;
     ata.device.library.Close            = ATAClose;
     ata.device.library.Init             = InitATA;
+    ata.device.library.baseLibrary      = &ata.device.library;
     ata.device.BeginIO                  = ATABeginIO;
 }

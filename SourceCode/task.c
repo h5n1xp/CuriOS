@@ -136,7 +136,7 @@ int over(){
     
     intuibase->DrawRectangle(gfxTest,30,30,200,160,intuibase->white);
     intuibase->DrawLine(gfxTest,5,25,50,90,intuition.black);
-    intuibase->DrawCircle(gfxTest,50,55,32,intuition.black);
+    intuibase->DrawCircle(gfxTest,50,55,32,intuition.black, false);
     intuibase->FloodFill(gfxTest,50,55,intuition.orange);
     
     intuibase->DrawVectorImage(gfxTest,70,40,kickStartBootImage);
@@ -160,7 +160,7 @@ int over(){
             if(ballY>106 || ballY<24){ballVY = -ballVY;}
         
             //DrawRectangle(under, ballX, ballY, 8, 8, intuition.orange);
-            intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black);
+            intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
             intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
         
         
@@ -246,7 +246,7 @@ int receiverT(){
             //debug_write_string("<-\n");
         }
         //DrawRectangle(under, ballX, ballY, 8, 8, intuition.orange);
-        intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black);
+        intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
         intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
        
     }

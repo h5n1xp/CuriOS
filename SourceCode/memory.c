@@ -345,9 +345,11 @@ library_t* OpenLibrary(char* name,uint64_t version){
         //return NULL;
     }
     
-    
-    library->Open(library);
-    return library;
+    // Each Library's Open() function is allowed to return a new instance if it wants to do so
+    // but it is up to that library to manage separate instances.
+    //
+    library_t* libInstance = library->Open(library);
+    return libInstance;
     
 }
 

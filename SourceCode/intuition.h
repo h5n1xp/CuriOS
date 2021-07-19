@@ -99,16 +99,17 @@ struct gadget_t{
 #define WINDOW_EVENT_KEYDOWN    0x4
 
 typedef struct{
-    message_t message;
-    uint64_t flags;
-    window_t* window;
-    gadget_t* gadget;
-    uint8_t rawKey;
-    uint8_t scancode;
-    int32_t mouseX;
-    int32_t mouseY;
-    int32_t mouseXrel;
-    int32_t mouseYrel;
+    message_t   message;
+    uint64_t    flags;
+    window_t*   window;
+    gadget_t*   gadget;
+    void*       data;       // pointer to extra data
+    uint8_t     rawKey;
+    uint8_t     scancode;
+    int32_t     mouseX;
+    int32_t     mouseY;
+    int32_t     mouseXrel;
+    int32_t     mouseYrel;
 }intuitionEvent_t;
 
 #define WINDOW_DRAGGABLE    0x1
@@ -125,7 +126,11 @@ typedef struct{
 typedef struct{
     library_t library;
     bool needsUpdate;
-    graphics_t* graphics;    //Eventually the intuition library will need to open the gfx library
+    graphics_t* graphics;       //Eventually the intuition library will need to open the gfx library
+    palette_t* systemColours;   //Move all window decoration drawing operations to a common palette... eventually
+    
+    //it's a bit messy to have these defined here, so will move all this to a proper palette structure.
+    //all the decoration drawing functions will need to be updated to be palette aware.
     uint32_t blue;
     uint32_t white;
     uint32_t orange;
@@ -138,6 +143,7 @@ typedef struct{
     uint32_t defaultWindowForegroundColour;
     uint32_t defaultWindowBackgroundColour;
     uint32_t defaultWindowHighlightColour;
+    
     uint8_t* defaultFont;
     uint32_t screenWidth;
     uint32_t screenHeight;
@@ -166,6 +172,7 @@ typedef struct{
     uint32_t systemCloseH;
     
     window_t* (*OpenWindow)(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
+    void (*SetTheme)(int value);
     void (*DrawDecoration)(window_t* window);
     void (*GimmeZeroZero)(window_t* window);
     void (*SetScreenTitle)(window_t* window,char* title);
@@ -182,8 +189,10 @@ typedef struct{
     void (*DrawString)(window_t*, uint32_t x, uint32_t y, char* string, uint32_t fColour, uint32_t bColour);
     void (*DrawRectangle)(window_t* window,uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t colour);
     void (*DrawLine)(window_t* window,uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t colour);
-    void (*DrawCircle)(window_t* window, uint32_t x, uint32_t y, uint32_t r, uint32_t colour);
     void (*FloodFill)(window_t* window, uint32_t x, uint32_t y, uint32_t colour);
+    void (*DrawCircle)(window_t* window, uint32_t x, uint32_t y, uint32_t r, uint32_t colour, bool filled);
+    void (*DrawTriangle)(window_t* window, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t x3, uint32_t y3, uint32_t colour,bool filled);
+
     void (*DrawVectorImage)(window_t* window, uint32_t x, uint32_t y, uint8_t* data);
     
     void (*RedrawWindow)(window_t* window);
@@ -205,6 +214,8 @@ extern volatile int32_t mouseY;
 extern int32_t mouseXold;
 extern int32_t mouseYold;
 
+
+// The functions below shouldn't really be here, anything using intutuion should be using the proper interface by now!!.
 window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
 void SetScreenTitle(window_t* window,char* title);
 void MoveWindow(window_t* window,int32_t x, int32_t y);

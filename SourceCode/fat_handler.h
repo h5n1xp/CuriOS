@@ -6,11 +6,11 @@
 //
 
 //Handlers are actually device structures, as devices can also be their own handlers
-//The FAT handler is a file system which needs to be mounted on top of a block device (specified in the dosEntry_t)
+//The FAT handler is a file system driver which needs to be mounted on top of a block device (specified in the dosEntry_t)
 //as such it doesn't have any of it's own device features, it is essentially just a library.
 //
 //
-//Handlers are a superset of the device type, if a device can be accessed by DOS it needs to be a handler. if a
+//Handlers are a superset of the device type, if a device can be accessed by DOS it needs to be of a handler type. if a
 //device does not need to be exposed to the file system it doesn't need to be a handler.
 
 #ifndef fat_handler_h

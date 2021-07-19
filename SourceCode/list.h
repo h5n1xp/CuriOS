@@ -14,8 +14,9 @@
 typedef struct node_t node_t;
 
 /*----- Mem Types -----*/
-#define MEM_TYPE_FREE  0
-#define MEM_TYPE_ALLOC 1
+#define MEM_TYPE_FREE   0   // Free, ready to be allocated
+#define MEM_TYPE_ALLOC  1   // Allocated and in use
+#define MEM_TYPE_PUBLIC 2   // Public/Shared between tasks
 
 /*----- Node Types -----*/
 #define NODE_UNKNOWN             0

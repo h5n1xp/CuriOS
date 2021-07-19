@@ -505,9 +505,11 @@ void FATInit(){
 
 }
 
-void FATOpen(library_t* lib){
+library_t* FATOpen(library_t* lib){
     //debug_write_string("FAT Handler opened\n");
     lib->openCount += 1;
+    
+    return lib;
 }
 
 void FATClose(library_t* lib){

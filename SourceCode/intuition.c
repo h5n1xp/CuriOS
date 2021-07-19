@@ -15,9 +15,9 @@
 #define THEME_OLD 0
 #define THEME_NEW 1
 #define THEME_MAC 2
+#define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-
-int guiTheme = THEME_NEW;
+int guiTheme = THEME_OLD;
 
 // time to rewrite the pointer code?
 //the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
@@ -2169,32 +2169,6 @@ void DrawLineI(window_t* window,uint32_t x0, uint32_t y0, uint32_t x1, uint32_t 
     
 }
 
-void DrawCircleI(window_t* window, uint32_t x, uint32_t y, uint32_t r, uint32_t colour){
-    
-    Lock(&window->clipRectsLock);
-    for(uint32_t i = 0;i < window->clipRects; ++i){
-        
-        uint32_t clipX1 = window->clipRect[i].x;
-        uint32_t clipX2 = window->clipRect[i].x + window->clipRect[i].w;
-        uint32_t clipY1 = window->clipRect[i].y;
-        uint32_t clipY2 = window->clipRect[i].y + window->clipRect[i].h;
-        
-        uint32_t winX1 = x;
-        uint32_t winX2 = x + r;
-        uint32_t winY1 = y;
-        uint32_t winY2 = y + r;
-        
-        if (clipX1 < winX2 && clipX2 > winX1 && clipY1 < winY2 && clipY2 > winY1){
-            window->clipRect[i].needsUpdate = true;
-            window->needsRedraw = true;
-        }
-     }
-    
-    graphics.DrawCircle(window->bitmap, x, y, r, colour);
-    FreeLock(&window->clipRectsLock);
-    
-}
-
 void FloodFillI(window_t* window, uint32_t x, uint32_t y, uint32_t colour){
     
     Lock(&window->clipRectsLock);
@@ -2222,6 +2196,76 @@ void FloodFillI(window_t* window, uint32_t x, uint32_t y, uint32_t colour){
     
 }
 
+void DrawCircleI(window_t* window, uint32_t x, uint32_t y, uint32_t r, uint32_t colour, bool filled){
+    
+    Lock(&window->clipRectsLock);
+    for(uint32_t i = 0;i < window->clipRects; ++i){
+        
+        uint32_t clipX1 = window->clipRect[i].x;
+        uint32_t clipX2 = window->clipRect[i].x + window->clipRect[i].w;
+        uint32_t clipY1 = window->clipRect[i].y;
+        uint32_t clipY2 = window->clipRect[i].y + window->clipRect[i].h;
+        
+        uint32_t winX1 = x;
+        uint32_t winX2 = x + r;
+        uint32_t winY1 = y;
+        uint32_t winY2 = y + r;
+        
+        if (clipX1 < winX2 && clipX2 > winX1 && clipY1 < winY2 && clipY2 > winY1){
+            window->clipRect[i].needsUpdate = true;
+            window->needsRedraw = true;
+        }
+     }
+    
+    graphics.DrawCircle(window->bitmap, x, y, r, colour);
+    
+    if(filled==true){
+        graphics.FloodFill(window->bitmap, x, y, colour);
+    }
+    
+    FreeLock(&window->clipRectsLock);
+    
+}
+
+void DrawTriangle(window_t* window, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t x3, uint32_t y3, uint32_t colour, bool filled){
+    debug_write_string("Intuition: Need to implement Triangle Draw\n");
+    
+    Lock(&window->clipRectsLock);
+    /*
+    for(uint32_t i = 0;i < window->clipRects; ++i){
+        
+        uint32_t clipX1 = window->clipRect[i].x;
+        uint32_t clipX2 = window->clipRect[i].x + window->clipRect[i].w;
+        uint32_t clipY1 = window->clipRect[i].y;
+        uint32_t clipY2 = window->clipRect[i].y + window->clipRect[i].h;
+        
+        uint32_t winX1 = window->x;
+        uint32_t winX2 = winX1 + window->w;
+        uint32_t winY1 = window->y;
+        uint32_t winY2 = winY1 + window->h;
+        
+        if (clipX1 < winX2 && clipX2 > winX1 && clipY1 < winY2 && clipY2 > winY1){
+            window->clipRect[i].needsUpdate = true;
+            window->needsRedraw = true;
+        }
+     }
+    */
+    
+    graphics.DrawLine(window->bitmap,x1, y1, x2, y2, colour);
+    graphics.DrawLine(window->bitmap,x2, y2, x3, y3, colour);
+    graphics.DrawLine(window->bitmap,x3, y3, x1, y1, colour);
+    
+    if(filled==true){
+        
+        //find the centre of the triangle
+        int x = (x1 + x2 + x3)/3;
+        int y = (y1 + y2 +y3)/3;
+        graphics.FloodFill(window->bitmap, x, y, colour);
+    }
+    FreeLock(&window->clipRectsLock);
+    
+    
+}
 
 void DrawVectorImageI(window_t* window, uint32_t x, uint32_t y, uint8_t* data){
 
@@ -2254,10 +2298,10 @@ void DrawString(window_t* window, uint32_t x, uint32_t y, char* string, uint32_t
     graphics.RenderString(window->bitmap,intuition.defaultFont,x,y,string,fColour,bColour);
 }
 
-void OpenIntuition(library_t* lib){
+library_t* OpenIntuition(library_t* lib){
     
     lib->openCount += 1;
-    
+    return lib; // this is a singleton library,
 }
 
 void CloseIntuition(library_t* lib){
@@ -2294,87 +2338,10 @@ void InitIntuition(library_t* library){
 
 
 
-void LoadIntuitionLibrary(){
-
+void SetTheme(int guiThemeValue){
     
-    inputStruct.focused = NULL;
-    //intuition.library.node.name = "intuition.library"; // now done in InitIntuition()
-    intuition.library.version   = 1;
-    intuition.library.Init      = InitIntuition;
-    intuition.library.Open      = OpenIntuition;
-    intuition.library.Close     = CloseIntuition;
-    intuition.screenWidth       = graphics.frameBuffer.width;;
-    intuition.screenHeight      = graphics.frameBuffer.height;
-    intuition.blue              = graphics.Colour(0x00,0x55,0xAA,0xFF);
-    intuition.white             = graphics.Colour(0xFF,0xFF,0xFF,0xFF);
-    intuition.orange            = graphics.Colour(0xFF,0x88,00,0xFF);
-    intuition.black             = graphics.Colour(0x00,0x00,0x22,0xFF);
-    intuition.grey              = graphics.Colour(171,187,205,0xFF);
-    intuition.red               = graphics.Colour(217,46,31,0xFF);
-    intuition.grey2             = graphics.Colour(170,170,170,0xFF);
-    intuition.blue2             = graphics.Colour(102,136,187,0xFF);
-    intuition.backgroundColour  = intuition.grey2;
-    intuition.mouseImage        = macMousePointer;
-    intuition.OpenWindow        = OpenWindow;
-    intuition.DrawDecoration    = drawWindowDecorationOld;
-    intuition.GimmeZeroZero     = GimmeZeroZeroOld;
-    intuition.SetScreenTitle    = SetScreenTitle;
-    intuition.MoveWindow        = MoveWindow;
-    intuition.ResizeWindow      = ResizeWindow;
-    intuition.WindowToBack      = WindowToBack;
-    intuition.WindowToFront     = WindowToFront;
-    intuition.Focus             = Focus;
-    intuition.Plot              = Plot;
-    intuition.PutChar           = PutChar;
-    intuition.DrawString        = DrawString;
-    intuition.DrawRectangle     = DrawRectangle;
-    intuition.DrawLine          = DrawLineI;
-    intuition.DrawCircle        = DrawCircleI;
-    intuition.FloodFill         = FloodFillI;
-    intuition.DrawVectorImage   = DrawVectorImageI;
-    
-    intuition.ClearWindow       = ClearWindow;
-    intuition.RedrawWindow      = RedrawWindow;
-    intuition.Request           = Request;
-    intuition.CreateGadget      = CreateGadget;
-    intuition.SetBusy           = SetBusy;
+    switch(guiThemeValue){
 
-    switch(guiTheme){
-        case THEME_OLD:
-            intuition.backgroundColour              = intuition.blue;
-            intuition.defaultWindowForegroundColour = intuition.white;
-            intuition.defaultWindowBackgroundColour = intuition.blue;
-            intuition.defaultWindowHighlightColour  = intuition.orange;
-            intuition.mouseImage                    = oldMousePointer;
-            intuition.normalMouseImage              = oldMousePointer;
-            intuition.busyMouseImage                = oldBusyPointer;
-            intuition.windowAutorise                = false;
-            intuition.doubleClickTime               = 250;
-            intuition.DrawDecoration                = drawWindowDecorationOld;
-            intuition.defaultFont                   = topazOld_font;
-            intuition.GimmeZeroZero                 = GimmeZeroZeroOld;
-            
-            intuition.DrawSystemDepthGadget         = DrawDepthGadgetOld;
-            intuition.systemDepthX                  = 25;
-            intuition.systemDepthY                  = 0;
-            intuition.systemDepthW                  = 20;
-            intuition.systemDepthH                  = 20;
-            intuition.systemDepthFlags              = GADGET_FLAG_ORIGIN_RIGHT;
-            
-            intuition.DrawSystemSizeGadget          = DrawSizeGadgetOld;
-            intuition.systemSizeX                   = 17;
-            intuition.systemSizeY                   = 18;
-            intuition.systemSizeW                   = 17;
-            intuition.systemSizeH                   = 18;
-            intuition.systemSizeFlags               = GADGET_FLAG_ORIGIN_RIGHT | GADGET_FLAG_ORIGIN_BOTTOM;
-            
-            intuition.DrawSystemCloseGadget         = DrawCloseGadgetOld;
-            intuition.systemCloseX                  = 4;
-            intuition.systemCloseY                  = 0;
-            intuition.systemCloseW                  = 20;
-            intuition.systemCloseH                  = 21;
-            
-            break;
         case THEME_NEW:
             intuition.backgroundColour              = intuition.grey2;
             
@@ -2448,9 +2415,100 @@ void LoadIntuitionLibrary(){
             break;
             
         default:
+            
+            intuition.backgroundColour              = intuition.blue;
+            intuition.defaultWindowForegroundColour = intuition.white;
+            intuition.defaultWindowBackgroundColour = intuition.blue;
+            intuition.defaultWindowHighlightColour  = intuition.orange;
+            intuition.mouseImage                    = oldMousePointer;
+            intuition.normalMouseImage              = oldMousePointer;
+            intuition.busyMouseImage                = oldBusyPointer;
+            intuition.windowAutorise                = false;
+            intuition.doubleClickTime               = 250;
+            intuition.DrawDecoration                = drawWindowDecorationOld;
+            intuition.defaultFont                   = topazOld_font;
+            intuition.GimmeZeroZero                 = GimmeZeroZeroOld;
+            
+            intuition.DrawSystemDepthGadget         = DrawDepthGadgetOld;
+            intuition.systemDepthX                  = 25;
+            intuition.systemDepthY                  = 0;
+            intuition.systemDepthW                  = 20;
+            intuition.systemDepthH                  = 20;
+            intuition.systemDepthFlags              = GADGET_FLAG_ORIGIN_RIGHT;
+            
+            intuition.DrawSystemSizeGadget          = DrawSizeGadgetOld;
+            intuition.systemSizeX                   = 17;
+            intuition.systemSizeY                   = 18;
+            intuition.systemSizeW                   = 17;
+            intuition.systemSizeH                   = 18;
+            intuition.systemSizeFlags               = GADGET_FLAG_ORIGIN_RIGHT | GADGET_FLAG_ORIGIN_BOTTOM;
+            
+            intuition.DrawSystemCloseGadget         = DrawCloseGadgetOld;
+            intuition.systemCloseX                  = 4;
+            intuition.systemCloseY                  = 0;
+            intuition.systemCloseW                  = 20;
+            intuition.systemCloseH                  = 21;
             break;
     }
     
+    
+}
+
+
+
+void LoadIntuitionLibrary(){
+    
+    // a library's load function is supposed to be called by the ELF loader at load time to build the function table.
+    //
+    
+    // It is the responsibility of Intuition to check if the graphics.library supports
+    // all the drawing functions, if not it then Intuition must had fallback functions
+    // to perform all the missing graphics drawing functions.
+    
+    inputStruct.focused = NULL;
+    //intuition.library.node.name = "intuition.library"; // now done in InitIntuition()
+    intuition.library.version   = 1;
+    intuition.library.Init      = InitIntuition;
+    intuition.library.Open      = OpenIntuition;
+    intuition.library.Close     = CloseIntuition;
+    intuition.screenWidth       = graphics.frameBuffer.width;;
+    intuition.screenHeight      = graphics.frameBuffer.height;
+    
+    intuition.blue              = graphics.Colour(0x00,0x55,0xAA,0xFF);
+    intuition.white             = graphics.Colour(0xFF,0xFF,0xFF,0xFF);
+    intuition.orange            = graphics.Colour(0xFF,0x88,00,0xFF);
+    intuition.black             = graphics.Colour(0x00,0x00,0x22,0xFF);
+    intuition.grey              = graphics.Colour(171,187,205,0xFF);
+    intuition.red               = graphics.Colour(217,46,31,0xFF);
+    intuition.grey2             = graphics.Colour(170,170,170,0xFF);
+    intuition.blue2             = graphics.Colour(102,136,187,0xFF);
+
+    intuition.OpenWindow        = OpenWindow;
+    intuition.SetTheme          = SetTheme;
+    intuition.SetScreenTitle    = SetScreenTitle;
+    intuition.MoveWindow        = MoveWindow;
+    intuition.ResizeWindow      = ResizeWindow;
+    intuition.WindowToBack      = WindowToBack;
+    intuition.WindowToFront     = WindowToFront;
+    intuition.Focus             = Focus;
+    intuition.Plot              = Plot;
+    intuition.PutChar           = PutChar;
+    intuition.DrawString        = DrawString;
+    intuition.DrawRectangle     = DrawRectangle;
+    intuition.DrawLine          = DrawLineI;
+    intuition.FloodFill         = FloodFillI;
+    intuition.DrawCircle        = DrawCircleI;
+    intuition.DrawTriangle      = DrawTriangle;
+    intuition.DrawVectorImage   = DrawVectorImageI;
+    
+    intuition.ClearWindow       = ClearWindow;
+    intuition.RedrawWindow      = RedrawWindow;
+    intuition.Request           = Request;
+    intuition.CreateGadget      = CreateGadget;
+    intuition.SetBusy           = SetBusy;
+
+    SetTheme(guiTheme);
+  
 }
 
 
