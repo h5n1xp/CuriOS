@@ -29,6 +29,9 @@ messagePort_t* CreatePort(char* name){
 
 void DeletePort(messagePort_t* port){
     
+    //TO DO: NEED TO REPLY TO ALL MESSAGES STILL QUEUED
+    //
+    //
     executive->FreeSignal(port->sigNum);
     executive->Dealloc((node_t*)port);
     

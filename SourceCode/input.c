@@ -95,6 +95,19 @@ int InputTaskEntry(){
                     //debug_write_string(event->window->node.name);debug_putchar('\n');
                 }
                 
+                if(event->flags & INTUITION_REQUEST_CLOSE_WINDOW){
+
+                    list_t* list = (list_t*)event->data;
+                    
+                    executive->Remove( list, (node_t*)event->window);
+                    
+                    intuibase->needsUpdate = true;
+                    
+                    //debug_write_string("Intution Rquest received: ");
+                    //debug_write_string(list->node.name);debug_putchar(' ');
+                    //debug_write_string(event->window->node.name);debug_putchar('\n');
+                }
+                
                 executive->ReplyMessage((message_t*)event);
                 event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
             }

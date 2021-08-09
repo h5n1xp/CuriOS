@@ -97,8 +97,12 @@ struct gadget_t{
 #define WINDOW_EVENT_RESIZE     0x1
 #define WINDOW_EVENT_RESIZE_END 0x2
 #define WINDOW_EVENT_KEYDOWN    0x4
+#define WINDOW_EVENT_CLOSE      0x8
+#define WINDOW_EVENT_VSYNC      0x10
 
-#define INTUITION_REQUEST_OPEN_WINDOW 0x1 //when received by intuition, will enqueue the window, event data points to windowList
+
+#define INTUITION_REQUEST_OPEN_WINDOW 0x1  //when received by intuition, will enqueue the window, event data points to windowList
+#define INTUITION_REQUEST_CLOSE_WINDOW 0x2 //when received by intuition, will remove the window
 
 
 typedef struct{
@@ -122,7 +126,7 @@ typedef struct{
 #define WINDOW_TITLEBAR     0x10
 #define WINDOW_RESIZABLE    0x20
 #define WINDOW_BORDERLESS   0x40
-
+#define WINDOW_VSYNC        0x80    // With this flag the window will be sent VSYNC events
 
 
 
@@ -175,6 +179,7 @@ typedef struct{
     uint32_t systemCloseH;
     void (*Update)(void);
     window_t* (*OpenWindow)(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
+    void (*CloseWindow)(window_t* window);
     void (*SetTheme)(int value);
     void (*DrawDecoration)(window_t* window);
     void (*GimmeZeroZero)(window_t* window);

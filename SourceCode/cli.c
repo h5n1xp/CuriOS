@@ -335,7 +335,7 @@ void reportError(char** arguments){
     switch(executive->thisTask->dosError){
         case DOS_ERROR_UNKNOWN_DEVICE:
             
-            //req = intuibase->Request("System Request");    //Throw a test Requestor, but why does it crash?
+            //req = intuibase->Request("System Request");    //Throw a test Requestor,
             /*
             //fake gadgets
             intuibase->DrawRectangle(req,17,98,63,33,intuibase->orange);
@@ -646,11 +646,12 @@ void processCommand(int commandLength){
         ConsoleWriteString(console,"   echo (Usage: echo filename) - echos the contents of a file to the console.\n");
         ConsoleWriteString(console,"   guru (Usage: guru) - purposely crashes this task.\n");
         ConsoleWriteString(console,"   help (Usage: help) - prints this help.\n");
-        ConsoleWriteString(console,"   load (Usage: load filename) - loads a relocatable ELF file into memory... and execute it?\n");
+        ConsoleWriteString(console,"   load (Usage: load filename) - loads an ELF executable into memory... and execute it (does not detach task from CLI!)\n");
+        ConsoleWriteString(console,"   run (Usage: run filename) - loads an ELF executable into memory... and runs it (detaches task from CLI!)\n");
         return;
     }
     
-    //Load an ELF Relocatable Object :-)
+    //Load an ELF executable :-)
     if(strcmp(commandBuffer,"load") == 0){
         
         if(count > 1){
@@ -669,7 +670,16 @@ void processCommand(int commandLength){
                     return;
                 }
 
-                dosbase->LoadELF(file);
+                executable_t tmp = dosbase->LoadELF(file);
+                
+                if(tmp.type==0){
+                    ConsoleWriteString(console,"Not executable.\n");
+                    return;
+                }
+                
+                void (*mn)() = tmp.entry;
+                mn();
+                executive->FreeMem(tmp.segment);
                 
                 //ConsoleWriteString(console,"\n");
                 dosbase->Close(file);
@@ -681,6 +691,48 @@ void processCommand(int commandLength){
         
             return;
     }
+    
+    //Load an ELF Relocatable Object :-)
+    if(strcmp(commandBuffer,"run") == 0){
+        
+        if(count > 1){
+           // ConsoleWriteString(console,"Openning file:\n");
+            file_t* file = dosbase->Open(arguments[1],0);
+            
+            if(file == NULL){
+                
+                reportError(arguments); //print the Dos Error
+                
+            }else{
+            
+                if(file->isDIR){
+                    ConsoleWriteString(console,"Not a file.\n");
+                    dosbase->Close(file);
+                    return;
+                }
+
+                executable_t tmp = dosbase->LoadELF(file);
+                
+                if(tmp.type==0){
+                    ConsoleWriteString(console,"Not executable.\n");
+                    return;
+                }
+                
+                executive->AddTask(tmp.entry,4096,0);
+    
+
+                
+                //ConsoleWriteString(console,"\n");
+                dosbase->Close(file);
+            }
+            
+        }else{
+            ConsoleWriteString(console,"Error: No file provided.\n");
+        }
+        
+            return;
+    }
+    
     
     // THese three theming commands don't really work as intution isn't set up for runtime theme swapping yet.
     if(strcmp(commandBuffer,"themenew") == 0){

@@ -568,11 +568,12 @@ void InitMultitasking(){
     // Write the address of the executive to address: 0x100000 (to top of the first megabyte)
     // This address isn't used for anything once the multiboot header has been read
     // So we are using it as the sysbase
+    // proper executables with a .executive section don't need this
     
     uint32_t* sysbase  = (uint32_t*)0x100000;
     *sysbase = (uint32_t)executive;
     
-    debug_write_hex((uint32_t)executive);debug_putchar('\n');
+    //debug_write_hex((uint32_t)executive);debug_putchar('\n');
 
     
     register_interrupt_handler(48, signal_trap); //  fire int48 for immediate reschedule

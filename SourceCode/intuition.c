@@ -17,7 +17,7 @@
 #define THEME_MAC 2
 #define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-int guiTheme = THEME_NEW;
+int guiTheme = THEME_OLD;
 
 // time to rewrite the pointer code?
 //the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
@@ -373,7 +373,7 @@ void updateMouse(){
             if(executive->ticks<=gadgetUnder->doubleClickTimeOut){
                 
                 if(gadgetUnder->MouseDoubleClick != NULL){
-                    gadgetUnder->MouseDoubleClick(gadgetUnder);
+                    gadgetUnder->MouseDoubleClick(gadgetUnder);  //execute the callback assigned to the action.
                     return;
                   }
                 
@@ -382,7 +382,7 @@ void updateMouse(){
             gadgetUnder->doubleClickTimeOut = executive->ticks + intuition.doubleClickTime;
             
             if(gadgetUnder->MouseDown != NULL){
-                gadgetUnder->MouseDown(gadgetUnder);
+                gadgetUnder->MouseDown(gadgetUnder);     //execute the callback assigned to the action.
             }
         }else if(gadgetUnder->mouseState & 1 ){
             gadgetUnder->state = GADGET_STATE_NORMAL;
@@ -390,7 +390,7 @@ void updateMouse(){
             gadgetUnder->Draw(gadgetUnder);
             intuition.RedrawWindow(gadgetUnder->window);
             if(gadgetUnder->MouseUp != NULL){
-                gadgetUnder->MouseUp(gadgetUnder);
+                gadgetUnder->MouseUp(gadgetUnder);  //execute the callback assigned to the action.
             }
             //debug_write_string("up");
             gadgetUnder = NULL;
@@ -696,7 +696,14 @@ void IntuitionUpdate(void){
     
     do{
         window_t* window =(window_t*)node;
-                
+        
+        //Send VSync signal to each window which needs it
+        if(window->flags & WINDOW_VSYNC){
+            intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+            event->flags = WINDOW_EVENT_VSYNC;
+            event->message.replyPort = NULL;
+            executive->PutMessage(window->eventPort,(message_t*)event);
+        }
         
         
         if(window->needsRedraw == true){
@@ -838,6 +845,23 @@ void DefaultResizeGadgetRelease(gadget_t* gadget){
     
     
 }
+
+
+void DefaultCloseGadgetRelease(gadget_t* gadget){
+
+    if(gadget->window->eventPort != NULL){
+        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+        event->flags = WINDOW_EVENT_CLOSE;
+        event->message.replyPort = NULL;
+        event->window = gadget->window;
+        event->data = NULL;
+        executive->PutMessage(gadget->window->eventPort,(message_t*)event);
+    }
+    
+}
+
+
+
 
 // Old Style
 void DrawCloseGadgetOld(gadget_t* gadget){
@@ -1522,7 +1546,7 @@ void calculateBlitRects(window_t* window){
     
     //debug_write_string("The Dredded Cliprect function!\n");
     
-    window->needsRedraw = true;
+
     node_t* winNode = (node_t*)window;
     
 uint32_t sX1 = window->x;
@@ -1547,6 +1571,8 @@ window->clipRects = 1;
         FreeLock(&window->clipRectsLock);
         return;
     }
+    
+    window->needsRedraw = true;
     
         node = intuition.windowList->pred;
     
@@ -2130,6 +2156,7 @@ window_t* OpenWindowPrivate(window_t* parent,uint32_t x, uint32_t y, uint32_t w,
         close->w        = intuition.systemCloseW;
         close->h        = intuition.systemCloseH;
         close->isDecoration = true;
+        close->MouseUp  = DefaultCloseGadgetRelease;
     }
 
 
@@ -2161,6 +2188,24 @@ window_t* OpenWindowPrivate(window_t* parent,uint32_t x, uint32_t y, uint32_t w,
     return window;
 }
 
+void CloseWindow(window_t* window){
+    
+    // NEED to de allocate all resources allocated by OpenWindow...
+    
+    if(window->eventPort != NULL){
+        executive->DeletePort(window->eventPort);
+        window->eventPort = NULL;
+    }
+    
+    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+    event->flags = INTUITION_REQUEST_CLOSE_WINDOW;
+    event->message.replyPort = NULL;
+    event->window = window;
+    event->data = intuition.windowList;
+    executive->PutMessage(intuition.intuiPort,(message_t*)event);
+    
+    
+}
 
 window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title){
     
@@ -2256,6 +2301,7 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
         close->w        = intuition.systemCloseW;
         close->h        = intuition.systemCloseH;
         close->isDecoration = true;
+        close->MouseUp  = DefaultCloseGadgetRelease;
     }
 
     
@@ -2297,12 +2343,11 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
 
 window_t* Request(char* title){
     
-    debug_write_string("Requester Called!\n");
     
     window_t* window = OpenWindow(NULL, 0,0,320,143,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET| WINDOW_RESIZABLE,title);
-    //graphics.DrawRect(window->bitmap,4,22,window->innerW-5,window->h - 26,intuition.white);
-    //graphics.DrawRect(window->bitmap,6,24,window->innerW-9,window->h - 30,intuition.blue);
-    //graphics.DrawRect(window->bitmap,8,26,window->innerW-13,window->h - 34,intuition.white);
+    graphics.DrawRect(window->bitmap,4,22,window->innerW-5,window->h - 26,intuition.white);
+    graphics.DrawRect(window->bitmap,6,24,window->innerW-9,window->h - 30,intuition.blue);
+    graphics.DrawRect(window->bitmap,8,26,window->innerW-13,window->h - 34,intuition.white);
     
     //fake gadgets
     //graphics.DrawRect(window->bitmap,17,98,63,33,intuition.orange);
@@ -2739,6 +2784,7 @@ void LoadIntuitionLibrary(){
     intuition.Update            = IntuitionUpdate;
     intuition.OpenWindowPrivate = OpenWindowPrivate;
     intuition.OpenWindow        = OpenWindow;
+    intuition.CloseWindow       = CloseWindow;
     intuition.SetTheme          = SetTheme;
     intuition.SetScreenTitle    = SetScreenTitle;
     intuition.MoveWindow        = MoveWindow;
