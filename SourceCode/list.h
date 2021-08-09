@@ -11,7 +11,7 @@
 
 #include "stdheaders.h"
 
-typedef struct node_t node_t;
+
 
 /*----- Mem Types -----*/
 #define MEM_TYPE_FREE   0   // Free, ready to be allocated
@@ -42,6 +42,8 @@ typedef struct {
     int64_t lockingTaskPri;
     void* lockingTask;
 }lock_t;
+
+typedef struct node_t node_t;
 
 struct node_t{
     node_t* next;

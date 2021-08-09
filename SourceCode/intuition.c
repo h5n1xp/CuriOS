@@ -17,7 +17,7 @@
 #define THEME_MAC 2
 #define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-int guiTheme = THEME_OLD;
+int guiTheme = THEME_NEW;
 
 // time to rewrite the pointer code?
 //the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
@@ -131,7 +131,7 @@ uint8_t oldBusyPointer[] ={
     
 intuition_t intuition;
 
-list_t windowList;
+//list_t windowList;
 
 window_t* windowUnder;
 gadget_t* gadgetUnder;
@@ -153,8 +153,12 @@ int32_t mouseXold = 0;
 int32_t mouseYold = 0;
 
 
-void drawWindowDecoration(window_t*); //forward declare this function.
-
+//forward declare these functions
+void drawWindowDecoration(window_t*);
+void RedrawWindow(window_t* window);
+void WindowToBack(window_t* window);
+void WindowToFront(window_t* window);
+void Focus(window_t* window);
 
 
 void updateMouse(){
@@ -245,8 +249,9 @@ void updateMouse(){
     }
     
     //Handle mouse position and button events
+    Lock(&intuition.windowList->lock);
     
-    node_t* node = windowList.pred;
+    node_t* node = intuition.windowList->pred;
     
     
     //Check if we are over a window
@@ -262,6 +267,8 @@ void updateMouse(){
         
         node = node->prev;
     }
+
+    FreeLock(&intuition.windowList->lock);
     
     windowUnder->mouseX  = mouseX - windowUnder->x;
     windowUnder->mouseY  = mouseY - windowUnder->y;
@@ -454,8 +461,6 @@ void clearMouse(){
     if(h >= graphics.frameBuffer.height){h = graphics.frameBuffer.height;}
     
     for(uint32_t y = (uint32_t)mouseY;y < h;++y){
-        
-     
         for(uint32_t x = (uint32_t)mouseX; x < w;++x){
             
             //if(x<graphics.frameBuffer.width && y<graphics.frameBuffer.height){
@@ -463,10 +468,6 @@ void clearMouse(){
             //}
             index += 1;
         }
-    
-
-        
-        
     }
     */
 
@@ -485,9 +486,9 @@ void clearMouse(){
         
     }
     
-    
-    
 }
+
+
 
 void drawMouse(){
     
@@ -540,26 +541,33 @@ void drawMouse(){
         for(uint32_t x = (uint32_t)mouseX; x < w; ++x){
             
             if(x<graphics.frameBuffer.width && y<graphics.frameBuffer.height){
-                if(intuition.mouseImage[index] == 1){
-                    p[(y * graphics.frameBuffer.width) + x] =  0;   //black
-                }
-            
-                if(intuition.mouseImage[index] == 2){
-                    p[(y * graphics.frameBuffer.width) + x] =  intuition.grey;
-                }
-            
-                if(intuition.mouseImage[index] == 3){
-                    p[(y * graphics.frameBuffer.width) + x] =  intuition.red;
-                }
                 
-                if(intuition.mouseImage[index] == 4){
-                    p[(y * graphics.frameBuffer.width) + x] =  intuition.white;
+                switch(intuition.mouseImage[index]){
+                    case 0:
+                        break;
+                    case 1:
+                        p[(y * graphics.frameBuffer.width) + x] =  0;   //black
+                        break;
+                    case 2:
+                        p[(y * graphics.frameBuffer.width) + x] =  intuition.grey;
+                        break;
+                    case 3:
+                        p[(y * graphics.frameBuffer.width) + x] =  intuition.red;
+                        break;
+                    case 4:
+                        p[(y * graphics.frameBuffer.width) + x] =  intuition.white;
+                        break;
+                    default:
+                        break;
                 }
+
                 
             }
             index += 1;
         }
     }
+    
+    return;
     
 }
 
@@ -599,6 +607,11 @@ void drawTitleBar(){
 
 void RedrawBlitRects(window_t* window){
  
+    //if the cliprects are locked then don't bother redrawing.
+    if(TestLock(&window->clipRectsLock)){
+        return;
+    }
+    
     Lock(&window->clipRectsLock);
     
     for(uint32_t i = 0; i<window->clipRects; ++i){
@@ -637,7 +650,7 @@ void updateLayers(window_t*); //forward declaration...
 void IntuitionUpdate(void){
     
     //To be called every Vertical Blanking interrupt.
-    
+
     clearMouse();
     updateMouse();
     
@@ -664,7 +677,9 @@ void IntuitionUpdate(void){
         }
     }
     
-    if(windowList.count == 0){
+    //don't update if there are no windows or the window list is locked
+    if(intuition.windowList->count == 0 || TestLock(&intuition.windowList->lock)){
+        drawMouse();
         return;
     }
 
@@ -675,11 +690,14 @@ void IntuitionUpdate(void){
     }
    
     
-    //This is the proper way to draw the window rects, front to back.
-    node_t* node = windowList.pred;
+    //This is the proper way to draw the window rects, front to back. Any issue with the compositor will show up.
+    
+    node_t* node = intuition.windowList->pred;
     
     do{
         window_t* window =(window_t*)node;
+                
+        
         
         if(window->needsRedraw == true){
             RedrawBlitRects(window);
@@ -688,14 +706,38 @@ void IntuitionUpdate(void){
             window->autoRefeshCountdown -=1;
             
             if(window->autoRefeshCountdown <0){
-                RedrawWindow(window);
+               RedrawWindow(window);
             }
         }
         
         
         node = node->prev;
     }while(node->prev !=NULL);
+    
+   
+    /*
+    node_t* node = intuition.windowList->head;
 
+    do{
+        window_t* window = (window_t*)node;
+        
+        
+        if(window->needsRedraw == true){
+           RedrawBlitRects(window);
+        }else{
+            //each window is redrawn automatically after one second
+            window->autoRefeshCountdown -=1;
+            
+            if(window->autoRefeshCountdown <0){
+               RedrawWindow(window);
+            }
+        }
+        
+       
+        node = node->next;
+    }while(node->next != NULL);
+    */
+    
     
     drawMouse();
 }
@@ -747,7 +789,7 @@ void DefaultDepthGadgetRelease(gadget_t* gadget){
     
     window_t* window = gadget->window;
     
-    if(window == (window_t*)windowList.pred){
+    if(window == (window_t*)intuition.windowList->pred){
         WindowToBack(window);
     }else{
         WindowToFront(window);
@@ -897,7 +939,7 @@ void DrawSizeGadgetOld(gadget_t* gadget){
 
 void drawWindowTitleBarOld(window_t* window){
 
-    DrawRectangle(window,0,0,window->w,20,intuition.white);
+    graphics.DrawRect(window->bitmap,0,0,window->w,20,intuition.white);
     
     //text start and stop
     uint32_t s = (uint32_t)strlen(window->node.name)*8;
@@ -917,8 +959,8 @@ void drawWindowTitleBarOld(window_t* window){
     }
     
     if(window->flags & WINDOW_DRAGGABLE){
-        DrawRectangle(window,l+3+s,4,(window->w - s)-dragBarX2,4,intuition.blue);
-        DrawRectangle(window,l+3+s,12,(window->w - s)-dragBarX2,4,intuition.blue);
+        graphics.DrawRect(window->bitmap,l+3+s,4,(window->w - s)-dragBarX2,4,intuition.blue);
+        graphics.DrawRect(window->bitmap,l+3+s,12,(window->w - s)-dragBarX2,4,intuition.blue);
     }
     
     
@@ -1193,8 +1235,9 @@ void drawWindowTitleBarNew(window_t* window){
         backCol = intuition.blue2;
     }
     
-    DrawRectangle(window,2,2,window->w-4,20 - 2,backCol);
+    graphics.DrawRect(window->bitmap,2,2,window->w-4,20 - 2,backCol);
     
+    //debug_write_string("Draw title Bar!\n");
 
     uint32_t l = 5;
     
@@ -1210,18 +1253,20 @@ void drawWindowTitleBarNew(window_t* window){
 
 void drawWindowDecorationNew(window_t* window){
     
+    //debug_write_string("Draw Decoration.\n");
+    
     if(!(window->flags & WINDOW_BORDERLESS)){
         drawWindowBorderNew(window);
-        
+
         if(window->flags & WINDOW_TITLEBAR){
             drawWindowTitleBarNew(window);
         }
         
-        
         //Draw Gadgets & and recalculate gadget positions
         node_t* node = window->gadgetList.head;
+
         while(node->next != NULL){
-            
+
             gadget_t* gadget = (gadget_t*)node;
             RecalculateGadgetPosition(gadget);
             if(gadget->isDecoration){
@@ -1474,6 +1519,9 @@ void drawWindowDecorationMac(window_t* window){
 
 void calculateBlitRects(window_t* window){
 
+    
+    //debug_write_string("The Dredded Cliprect function!\n");
+    
     window->needsRedraw = true;
     node_t* winNode = (node_t*)window;
     
@@ -1500,12 +1548,12 @@ window->clipRects = 1;
         return;
     }
     
-        node = windowList.pred;
+        node = intuition.windowList->pred;
     
          while (node != winNode) {
              
              window_t* above = (window_t*)node;
-          
+             
              uint32_t winX1 = above->x;
              uint32_t winY1 = above->y;
              uint32_t winX2 = above->x + above->w;
@@ -1684,7 +1732,7 @@ window->clipRects = 1;
              node = node->prev;
          }
     
-    if(window->clipRects>30){
+    if(window->clipRects>255){
         debug_write_string("Too many Clirects!!");
     }
     
@@ -1719,6 +1767,8 @@ window->clipRects = 1;
 
 void updateLayers(window_t* window){
     
+    //THis function should never be called by a user task!!!
+    
     //if window = NULL, update all layers
     
     /*
@@ -1740,7 +1790,14 @@ void updateLayers(window_t* window){
     
    
     //Simply Update all layers
-    node_t* node = windowList.pred;
+    
+    //executive->Forbid();
+    
+    
+    //debug_write_string("begin update\n");
+    //Lock(&windowList.lock);
+    
+    node_t* node = intuition.windowList->pred;
     
     do{
         window = (window_t*)node;
@@ -1748,8 +1805,9 @@ void updateLayers(window_t* window){
         node = node->prev;
     }while(node->prev != NULL);
 
+    //FreeLock(&windowList.lock);
     
-    
+    //executive->Permit();
     
 }
 
@@ -1865,7 +1923,6 @@ void MoveWindow(window_t* window,int32_t x, int32_t y){
     window->x = x;
     window->y = y;
     
-    //updateLayers(window);
     intuition.needsUpdate = true;
     RedrawWindow(window);
 }
@@ -1873,28 +1930,26 @@ void MoveWindow(window_t* window,int32_t x, int32_t y){
 
 void WindowToBack(window_t* window){
     window->node.priority = 1;
-    Remove(&windowList,(node_t*)window);
-    Enqueue(&windowList, (node_t*)window);
+    Remove(intuition.windowList,(node_t*)window);
+    Enqueue(intuition.windowList, (node_t*)window);
     window->node.priority = 0;
     intuition.needsUpdate = true;
-    //updateLayers(window);
     RedrawWindow(window);
 }
 
 void WindowToFront(window_t* window){
     window->node.priority = -1;
-    Remove(&windowList,(node_t*)window);
-    Enqueue(&windowList, (node_t*)window);
+    Remove(intuition.windowList,(node_t*)window);
+    Enqueue(intuition.windowList, (node_t*)window);
     window->node.priority = 0;
     intuition.needsUpdate = true;
-    //updateLayers(window);
     RedrawWindow(window);
     
 }
 
 void PriorityOrderPrivate(window_t* window){
-    Remove(&windowList,(node_t*)window);
-    Enqueue(&windowList, (node_t*)window);
+    Remove(intuition.windowList,(node_t*)window);
+    Enqueue(intuition.windowList, (node_t*)window);
     //intuition.needsUpdate = true;
     updateLayers(window);
     RedrawWindow(window);
@@ -1948,23 +2003,191 @@ void SetBusy(window_t* window,bool state){
     inputStruct.rawMouse[3] = 1; // tell intuition to update mouse image
 }
 
-window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title){
+/*
+void InsertI(list_t* list, node_t* node, node_t* pred){
+    
+    node->next = pred->next;
+    node->prev = pred;
+    
+    node->next->prev = node;
+    pred->next = node;
+    
+    list->count +=1;
+    
+}
+
+void EnqueueI(list_t* list,node_t* node){
+
+    node_t* pred = list->pred;
+    
+    while(pred->prev != NULL){
+        
+        if(pred->priority >= node->priority){
+            Insert(list, node, pred);
+            debug_write_string("Found a sutiable place\n");
+            return;
+        }
+        
+        pred = pred->prev;
+    }
+    
+    
+    AddHead(list, node);
+    debug_write_string("stuck it at the head\n");
+}
+*/
+
+
+//OpenWindowPrivate only works before multitasking is started
+window_t* OpenWindowPrivate(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title){
+    
     window_t* window =(window_t*)executive->Alloc(sizeof(window_t));
     window->node.nodeType = NODE_WINDOW;
     window->node.name = title;
     window->node.priority = 0;
     window->screenTitle = NULL;
     
+    //Clamp window to screen bounds
+    if(x>graphics.frameBuffer.width){x=0;}
+    if(y>graphics.frameBuffer.height){y=0;}
+    
+    //init window values to ensure the window state is known at startup
+    window->doubleClick = 0;
+    window->mouseX  = 0;
+    window->mouseX  = 0;
+    window->innerX  = 0;
+    window->innerY  = 0;
+    window->innerW  = w;
+    window->innerH  = h;
+    window->focused = false;
+    window->needsRedraw = true;
+    window->isBusy = false;
+    window->autoRefeshCountdown = 0;
+    
+    window->parent = parent;
+    window->x = x;
+    window->y = y;
+    window->w = w;
+    window->h = h;
+    window->minWidth = 100;
+    window->minHeight = 60;
+    window->maxWidth = graphics.frameBuffer.width;
+    window->maxHeight = graphics.frameBuffer.height;
+    window->flags = flags;
+    window->bitmap = graphics.NewBitmap(w, h);
+    window->eventPort = NULL;
+    intuition.GimmeZeroZero(window);
+    
+    window->foregroundColour = intuition.defaultWindowForegroundColour;
+    window->backgroundColour = intuition.defaultWindowBackgroundColour;
+    window->highlightColour = intuition.defaultWindowHighlightColour;
+    
+    window->noRise = false;    // by default windows should be (double) clickable to front
     
 
-    Enqueue(&windowList, (node_t*)window);
+    //clear the window;
+    uint32_t* p = window->bitmap->buffer;
+    for(uint32_t i=0;i<w*h;++i){
+        p[i] = window->backgroundColour;
+    }
+
     
-    //debug_write_string("Enqueued Window!\n");
+
+    
+    InitList(&window->gadgetList);
+
+    //debug_write_string("Building window decoration\n");
+    
+    //Build Window Decoration
+    if(window->flags & WINDOW_DEPTH_GADGET){
+        gadget_t* depth = CreateGadget(window,intuition.systemDepthFlags);
+        depth->Draw = intuition.DrawSystemDepthGadget;
+        depth->x        = intuition.systemDepthX;
+        depth->y        = intuition.systemDepthY;
+        depth->w        = intuition.systemDepthW;
+        depth->h        = intuition.systemDepthH;
+        depth->isDecoration = true;
+        depth->MouseUp  = DefaultDepthGadgetRelease;
+    }
+    
+    if(window->flags & WINDOW_RESIZABLE){
+        gadget_t* resize = CreateGadget(window,intuition.systemSizeFlags);
+        resize->Draw = intuition.DrawSystemSizeGadget;
+        resize->x        = intuition.systemSizeX;
+        resize->y        = intuition.systemSizeY;
+        resize->w        = intuition.systemSizeW;
+        resize->h        = intuition.systemSizeH;
+        resize->isDecoration = true;
+        resize->MouseMoved = DefaultResizeGadgetMoved;
+        resize->MouseUp    = DefaultResizeGadgetRelease;
+    }
+    
+    if(window->flags & WINDOW_CLOSE_GADGET){
+        gadget_t* close = CreateGadget(window,0);
+        close->Draw     = intuition.DrawSystemCloseGadget;
+        close->x        = intuition.systemCloseX;
+        close->y        = intuition.systemCloseY;
+        close->w        = intuition.systemCloseW;
+        close->h        = intuition.systemCloseH;
+        close->isDecoration = true;
+    }
+
+
+    intuition.DrawDecoration(window);
+    
+    //set up first cliprect
+    window->clipRectsLock.isLocked = false;
+    window->clipRect[0].isVisible=true;
+    window->clipRect[0].x = 0;
+    window->clipRect[0].y = 0;
+    window->clipRect[0].w = window->w;
+    window->clipRect[0].h = window->h;
+    window->clipRects = 1;
+    
+    
+    //Add window to intuition's window list
+    
+    Lock(&intuition.windowList->lock);
+    Enqueue(intuition.windowList, (node_t*)window);
+    FreeLock(&intuition.windowList->lock);
+    intuition.needsUpdate = true;
+    window->needsRedraw = true;
+    updateLayers(window);
+    
+    //RedrawWindow(window); // probably don't need this anymore
+    
+
+    
+    return window;
+}
+
+
+window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title){
+    
+    //executive->debug_write_string("Open Window!\n");
+    
+    window_t* window =(window_t*)executive->Alloc(sizeof(window_t));
+    window->node.nodeType = NODE_WINDOW;
+    window->node.name = title;
+    window->node.priority = 0;
+    window->screenTitle = NULL;
     
     //Clamp window to screen bounds
     if(x>graphics.frameBuffer.width){x=0;}
     if(y>graphics.frameBuffer.height){y=0;}
     
+    //init window values to ensure the window state is known at startup
+    window->doubleClick = 0;
+    window->mouseX  = 0;
+    window->mouseX  = 0;
+    window->innerX  = 0;
+    window->innerY  = 0;
+    window->innerW  = w;
+    window->innerH  = h;
+    window->focused = false;
+    window->needsRedraw = true;
+    window->isBusy = false;
+    window->autoRefeshCountdown = 0;
     
     
     window->parent = parent;
@@ -1987,17 +2210,20 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
     
     window->noRise = false;    // by default windows should be (double) clickable to front
     
-    //debug_write_string("Blank window!\n");
+
+    //clear the window;
     uint32_t* p = window->bitmap->buffer;
     for(uint32_t i=0;i<w*h;++i){
         p[i] = window->backgroundColour;
     }
 
     
-    
+
     
     InitList(&window->gadgetList);
 
+    //debug_write_string("Building window decoration\n");
+    
     //Build Window Decoration
     if(window->flags & WINDOW_DEPTH_GADGET){
         gadget_t* depth = CreateGadget(window,intuition.systemDepthFlags);
@@ -2034,15 +2260,40 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
 
     
     
-    //debug_write_string("decoration added!\n");
+
     intuition.DrawDecoration(window);
     
+    //set up first cliprect
+    window->clipRectsLock.isLocked = false;
+    window->clipRect[0].isVisible=true;
+    window->clipRect[0].x = 0;
+    window->clipRect[0].y = 0;
+    window->clipRect[0].w = window->w;
+    window->clipRect[0].h = window->h;
+    window->clipRects = 1;
     
-    updateLayers(window);
-    //RedrawWindow(window); // probably don't need this anymore
     
+    //debug_write_string("Enqueuing Window!\n");
+    
+    //Add window to intuition's window list via a message
+    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+    event->flags = INTUITION_REQUEST_OPEN_WINDOW;
+    event->message.replyPort = NULL;
+    event->window = window;
+    event->data = intuition.windowList;
+    executive->PutMessage(intuition.intuiPort,(message_t*)event);
+    
+    //debug_write_string("Enqueued Window!\n");
+
     return window;
 }
+
+
+
+
+
+
+
 
 window_t* Request(char* title){
     
@@ -2322,7 +2573,9 @@ void InitIntuition(library_t* library){
     library->node.name = "intuition.library";
     library->node.nodeType = NODE_LIBRARY;
     
-    InitList(&windowList);
+    intuition.windowList = (list_t*)executive->Alloc(sizeof(list_t));
+    InitList(intuition.windowList);
+    intuition.windowList->node.name = "Intuition Window List";
     screenTitle = NULL;
     
     //clear screen
@@ -2483,6 +2736,8 @@ void LoadIntuitionLibrary(){
     intuition.grey2             = graphics.Colour(170,170,170,0xFF);
     intuition.blue2             = graphics.Colour(102,136,187,0xFF);
 
+    intuition.Update            = IntuitionUpdate;
+    intuition.OpenWindowPrivate = OpenWindowPrivate;
     intuition.OpenWindow        = OpenWindow;
     intuition.SetTheme          = SetTheme;
     intuition.SetScreenTitle    = SetScreenTitle;
@@ -2490,6 +2745,7 @@ void LoadIntuitionLibrary(){
     intuition.ResizeWindow      = ResizeWindow;
     intuition.WindowToBack      = WindowToBack;
     intuition.WindowToFront     = WindowToFront;
+    intuition.PriorityOrderPrivate  = PriorityOrderPrivate;
     intuition.Focus             = Focus;
     intuition.Plot              = Plot;
     intuition.PutChar           = PutChar;

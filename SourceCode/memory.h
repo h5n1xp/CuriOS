@@ -1,6 +1,5 @@
 //
 //  memory.h
-//  GFXConvert
 //
 //  Created by Matt Parsons on 25/10/2020.
 //  Copyright © 2020 Matt Parsons. All rights reserved.
@@ -29,11 +28,18 @@ typedef struct{
     uint64_t allocationTotal;   // it might make sense to audit the total number of allocations vs deallocations at some point
     uint64_t deallocationTotal;
     
+    //Debugging output functions
+    void (*debug_write_string)(char* str);
+    void (*debug_write_hex)(uint32_t n);
+    void (*debug_write_dec)(uint32_t n);
+    void (*debug_backspace)(void);
+    void (*debug_putchar)(char c);
+    
     node_t* (*Alloc)(size_t);       //For allocating node_t types
     void (*Dealloc)(node_t*);       //for deallocating node_t types
     
-    void* (*AllocMem)(size_t size, uint64_t type);
-    void (*FreeMem)(void* pointer);
+    void* (*AllocMem)(size_t size, uint64_t type); // the allocation is recorded in the task structure of the allocating context
+    void (*FreeMem)(void* pointer); // memory is returned to the free list.
     
     void (*InitList)(list_t* list);
     
@@ -86,6 +92,9 @@ typedef struct{
     void (*SendIO)(ioRequest_t* req);
     void (*DoIO)(ioRequest_t* req);
     void (*CheckIO)(ioRequest_t* req);
+    
+    //Interrupts
+    void (*SetIntVector)(uint8_t interruptNumber, isr_t handler); //set the interrupt handler callback code.
     
     task_t* thisTask;
     list_t deviceList;

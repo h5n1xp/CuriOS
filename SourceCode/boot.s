@@ -444,8 +444,8 @@ isr_common_stub:
     pusha
     movw %ds,%ax
     push %eax
-    push %esp
-
+    push %esp       //Save the curent stack poiner as this is where we want the interrupt to continue from after it has processed
+                    //A contect switch may have happened so after processing, this might point to a new context.
     movw $0x10,%ax
     movw %ax,%ds
     movw %ax,%es

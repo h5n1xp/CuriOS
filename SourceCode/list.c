@@ -8,6 +8,7 @@
 
 #include "List.h"
 #include "string.h"
+#include "SystemLog.h"
 
 void InitList(list_t* list){
     list->head = (node_t*)&list->tail;
@@ -126,11 +127,14 @@ void Insert(list_t* list, node_t* node, node_t* pred){
     list->count +=1;
     
 }
+
 void Remove(list_t* list,node_t* node){
+    
+    list->count -=1;
+    
     node->prev->next = node->next;
     node->next->prev = node->prev;
     
-    list->count -=1;
 }
 node_t* RemHead(list_t* list){
 

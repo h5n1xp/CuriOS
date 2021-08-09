@@ -35,24 +35,31 @@ void processKeyboardBuffer(uint8_t);
 
 int InputTaskEntry(){
     
+    intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
+    
+    intuibase->intuiPort = executive->CreatePort("intuiPort");
+    
     //The input task can have the responsibility of maintaining the title bar.
-    inputStruct.screenTitle = OpenWindow(NULL,0,0,graphics.frameBuffer.width,graphics.frameBuffer.height,WINDOW_BORDERLESS,"Screen Title Bar");
+    inputStruct.screenTitle = intuibase->OpenWindowPrivate(NULL,0,0,graphics.frameBuffer.width,graphics.frameBuffer.height,WINDOW_BORDERLESS,"Screen Title Bar");
     inputStruct.screenTitle->noRise = true;
     graphics.DrawRect(inputStruct.screenTitle->bitmap, 0,0,graphics.frameBuffer.width,graphics.frameBuffer.height,intuition.backgroundColour);
     graphics.DrawRect(inputStruct.screenTitle->bitmap, 0,0,graphics.frameBuffer.width,20,intuition.white);
     graphics.RenderString(inputStruct.screenTitle->bitmap,intuition.defaultFont, 4,2,"System Screen",intuition.blue,intuition.white);
     
     inputStruct.screenTitle->node.priority = 100;
-    PriorityOrderPrivate(inputStruct.screenTitle);
+    //intuibase->
+    intuibase->PriorityOrderPrivate(inputStruct.screenTitle);
     
     executive->thisTask->node.name = inputTaskName;
     uint32_t keyboardBufferReadPosition = 0;
     
     while(1) {
         
-        uint64_t signals = executive->Wait(2);
+        uint64_t signals = executive->Wait(2 | 1 << intuibase->intuiPort->sigNum); // signal 2 being the interrupt signal
         
-        if(signals == 2){
+
+        //interrupt received
+        if(signals & 2){
         
             while( keyboardBufferReadPosition != inputStruct.keyboardBufferPosition){
                 uint8_t val = inputStruct.keyboardBuffer[keyboardBufferReadPosition];
@@ -60,11 +67,40 @@ int InputTaskEntry(){
                 if(keyboardBufferReadPosition == 32){keyboardBufferReadPosition = 0;}
                 processKeyboardBuffer(val);
             }
-
-            
+        
             //Generate Intuition Events
-            IntuitionUpdate();
+            intuibase->Update();
+            
         }
+        
+        //message received
+        if(signals & (1 << intuibase->intuiPort->sigNum) ){
+        
+            intuitionEvent_t* event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
+            
+            while(event != NULL){
+                
+                if(event->flags & INTUITION_REQUEST_OPEN_WINDOW){
+
+                    list_t* list = (list_t*)event->data;
+                    
+                    executive->Enqueue( list, (node_t*)event->window);
+                    
+                    intuibase->needsUpdate = true;
+                    event->window->needsRedraw = true;
+                    
+                    
+                    //debug_write_string("Intution Rquest received: ");
+                    //debug_write_string(list->node.name);debug_putchar(' ');
+                    //debug_write_string(event->window->node.name);debug_putchar('\n');
+                }
+                
+                executive->ReplyMessage((message_t*)event);
+                event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
+            }
+            
+        }
+        
     }
     
 }
@@ -139,10 +175,10 @@ void processKeyboardBuffer(uint8_t val){
             case 77:break; //right cursor
             case 80:break; //down cursor
             default:
-                //terminal_write_dec(val);
+               
                 character = scancode[val+shift];
                 
-                //commandBufferInsert(character,val);
+               
                 if(inputStruct.focused->eventPort != NULL){
                     
                     intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));

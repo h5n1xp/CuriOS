@@ -671,7 +671,7 @@ void processCommand(int commandLength){
 
                 dosbase->LoadELF(file);
                 
-                ConsoleWriteString(console,"\n");
+                //ConsoleWriteString(console,"\n");
                 dosbase->Close(file);
             }
             
@@ -701,6 +701,12 @@ void processCommand(int commandLength){
         return;
     }
     
+    if(strcmp(commandBuffer,"a") == 0){
+        intuibase->OpenWindow(NULL, 0, 0, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "Bouncy!");
+        ConsoleWriteString(console,"New Window\n");
+        return;
+    }
+    
     ConsoleWriteString(console,"Unknown Command ");
     ConsoleWriteString(console,arguments[0]);
     ConsolePutChar(console,'\n');
@@ -726,11 +732,16 @@ int CliEntry(void){
     //The boot disk will be FAT32, so load the FAT Handler
     LoadFATHandler();
     executive->AddDevice((device_t*)&fatHandler);
-
+    
+    //just busy wait,
+    //volatile int t = 0;
+    //for(int i=0;i<1000000;++i){
+    //    t++;
+    //}
     
     intuibase = (intuition_t*) executive->OpenLibrary("intuition.library",0);
     
-    console = intuibase->OpenWindow(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight/2)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
+    console = intuibase->OpenWindowPrivate(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight/2)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
     console->eventPort = executive->CreatePort("Event Port");
 
     ConsoleSize(console);

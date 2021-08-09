@@ -35,7 +35,7 @@
 
 
 typedef struct registers{
-    uint32_t link;
+    uint32_t link;                // used to save the current supervisor stack pointer during a context switch
     uint32_t ds;                  // Data segment selector
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax; // Pushed by pusha.
     uint32_t int_no, err_code;    // Interrupt number and error code (if applicable)
@@ -44,5 +44,14 @@ typedef struct registers{
 
 typedef void (*isr_t)(registers_t*);
 void register_interrupt_handler(uint8_t n, isr_t handler);
+
+
+
+/*
+struct IntVector {        // For EXECUTIVE use ONLY!
+    void*    iv_Data;
+    void    (*iv_Code)(registers_t*);
+};
+*/
 
 #endif

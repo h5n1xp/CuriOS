@@ -8,7 +8,17 @@
 #include "memory.h"
 #include "SystemLog.h"
 
+#include "timer.h"
+
 executive_t* executive;
+
+//Debugging function to be removed once the ELF/Binary executable Loader works
+void Test(){
+    debug_write_string("Executive Test Function Called by task ");
+    debug_write_string(executive->thisTask->node.name);
+    debug_putchar('\n');
+    WaitMS(1);
+}
 
 //Classic Amiga boot image 
 uint8_t kickStartBootImage[] = {255,1,35,11,58,11,58,33,113,33,113,11,125,11,136,22,136,94,127,94,127,56,64,56,62,54,53,54,52,56,45,56,45,65,35,72,35,11,254,2,37,69,255,1,33,72,33,10,126,10,138,22,138,95,86,95,86,100,82,108,78,113,74,116,68,125,60,129,60,140,10,140,10,109,9,109,9,81,13,75,20,69,21,65,25,58,30,55,33,54,33,54,30,56,26,58,22,65,21,69,14,75,10,81,10,108,11,109,11,139,40,139,40,118,48,118,52,114,52,95,50,92,50,82,65,69,65,57,62,55,59,55,62,58,62,65,61,66,54,66,51,63,42,70,30,76,18,85,18,84,30,75,26,74,23,71,26,73,30,74,33,72,255,1,50,61,52,54,60,55,61,58,61,65,54,65,50,61,255,1,51,92,51,82,66,69,66,57,125,57,125,94,52,94,51,90,255,1,60,11,111,11,111,32,60,32,60,11,255,1,96,14,107,14,107,28,96,28,96,14,254,3,62,31,255,1,98,15,105,15,105,27,98,27,98,15,254,2,99,26,255,1,47,57,50,57,50,59,47,63,47,57,255,1,41,139,41,119,48,119,53,114,53,105,57,107,65,107,65,109,69,114,73,114,73,116,67,125,59,128,59,139,41,139,255,1,53,95,53,100,58,97,53,95,255,1,57,98,53,100,53,95,74,95,64,105,63,105,65,103,60,98,57,98,255,1,78,95,85,95,85,100,81,108,78,112,73,113,70,113,67,109,67,106,78,95,255,1,68,106,68,109,70,112,72,112,76,111,77,108,73,105,68,106,255,1,54,104,62,106,64,103,60,99,57,99,54,101,54,104,255,1,126,11,137,22,137,94,254,1,34,11,254,1,59,11,254,1,97,15,254,1,106,27,254,1,112,15,254,1,126,94,254,1,75,96,254,1,46,57,255,255};
@@ -27,10 +37,16 @@ inline void Lock(lock_t* lock){
         //to avoid a  priority inversion match the waiting task priority with the locking task.
         int64_t taskPri = executive->thisTask->node.priority;
         
-        //only match if the locking task is lower priority;
-        if(lock->lockingTaskPri<taskPri){
-            executive->thisTask->node.priority = lock->lockingTaskPri;
+       /*
+        if(lock->lockingTask == executive->thisTask){
+            return;
         }
+        */
+        
+        if(lock->lockingTaskPri<taskPri){  //only match if the locking task is lower priority;
+                executive->thisTask->node.priority = lock->lockingTaskPri;
+        }
+
 
         while (__atomic_test_and_set(&lock->isLocked, __ATOMIC_ACQUIRE)) {
             //debug_write_string(" Waiting Lock: ");
@@ -141,6 +157,8 @@ node_t* KAlloc(size_t size){
         //exact match
         if(freeblock->size == size){
             Remove(freelist, freeblock);
+            freeblock->priority = 0;
+            freeblock->flags = 0;
             freeblock->type = MEM_TYPE_ALLOC;
             freeblock->nodeType = NODE_UNKNOWN;
             freeblock->next = NULL;
@@ -178,6 +196,8 @@ node_t* KAlloc(size_t size){
     newBlock->flags = 0;
     newBlock->type = MEM_TYPE_ALLOC;
     newBlock->nodeType = NODE_UNKNOWN;
+    newBlock->next = NULL;
+    newBlock->prev = NULL;
     newBlock->nextContigious = freeblock->nextContigious;
     
 
@@ -338,6 +358,8 @@ library_t* OpenLibrary(char* name,uint64_t version){
         return NULL;
     }
     
+
+    
     
     //need to check the verion number before returning;
     if(library->version < version){
@@ -349,6 +371,13 @@ library_t* OpenLibrary(char* name,uint64_t version){
     // but it is up to that library to manage separate instances.
     //
     library_t* libInstance = library->Open(library);
+    
+    //debug_write_string("OpenLibrary Called\n");
+    //debug_write_string(libInstance->node.name);
+    //executive->debug_putchar(' ');
+    //debug_write_hex((uint32_t)libInstance);
+    //executive->debug_putchar('\n');
+    
     return libInstance;
     
 }
@@ -504,7 +533,7 @@ void dummyStub(void){
 
 void InitMemory(void* startAddress, uint64_t size){
     
-    executive =(executive_t*)startAddress;
+    executive = (executive_t*)startAddress;
     
     InitList(startAddress);
     executive_t* executive = startAddress;
@@ -521,6 +550,12 @@ void InitMemory(void* startAddress, uint64_t size){
     executive->quantum = 2;
     executive->elapsed = executive->quantum;
     
+    //Debugging output functions
+    executive->debug_write_string   = debug_write_string;
+    executive->debug_write_hex      = debug_write_hex;
+    executive->debug_write_dec      = debug_write_dec;
+    executive->debug_backspace      = debug_backspace;
+    executive->debug_putchar        = debug_putchar;
     
     executive->Alloc            = KAlloc;
     executive->Dealloc          = KDealloc;
@@ -573,6 +608,7 @@ void InitMemory(void* startAddress, uint64_t size){
     executive->DoIO             = DoIO;
     executive->CreateIORequest  = CreateIORequest;
     
+    executive->SetIntVector     = register_interrupt_handler; //for system use only.
     
     executive->thisTask = NULL;
     InitList(&executive->deviceList);

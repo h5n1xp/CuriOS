@@ -73,7 +73,7 @@ void isr_handler(registers_t regs){
         intuibase->DrawString(req,18,30,"Guru Meditation:",intuibase->blue,intuibase->white);
         intuibase->DrawString(req,18,30+20,task->node.name,intuibase->blue,intuibase->white);
         intuibase->DrawString(req,18,30+40,trap_strs[int_no],intuibase->blue,intuibase->white);
-        IntuitionUpdate();
+        intuibase->Update();
          
         //Halt the system.
         //terminal_writestring(" !System Halted!\n");

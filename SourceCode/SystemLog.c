@@ -23,12 +23,13 @@ window_t* sysLogWindow;
 
 char scrTit[] = "Debugging Console";
 
+intuition_t* intui;
 
 void clear_cursor(void){
     
     if(sysLogWindow==NULL){return;}
     
-    DrawRectangle(sysLogWindow,curX, curY, 8, 16, sysLogWindow->backgroundColour);
+    intui->DrawRectangle(sysLogWindow,curX, curY, 8, 16, sysLogWindow->backgroundColour);
 }
 
 void draw_cursor(uint32_t x,uint32_t y){
@@ -37,12 +38,12 @@ void draw_cursor(uint32_t x,uint32_t y){
     
     curX = (x*8)+4;
     curY = (y*16)+22;
-    DrawRectangle(sysLogWindow,curX, curY, 8, 16, sysLogWindow->highlightColour);
+    intui->DrawRectangle(sysLogWindow,curX, curY, 8, 16, sysLogWindow->highlightColour);
 }
 
 void debug_putchar_at(uint32_t x, uint32_t y, uint8_t c){
     sysLogBuffer[(y*sysLogWidth) + x] = c;
-    PutChar(sysLogWindow, (x*8)+4, (y*16)+22, c, sysLogWindow->foregroundColour, sysLogWindow->backgroundColour);
+    intui->PutChar(sysLogWindow, (x*8)+4, (y*16)+22, c, sysLogWindow->foregroundColour, sysLogWindow->backgroundColour);
 }
 
 void debug_scroll_one_line(){
@@ -185,11 +186,12 @@ void debug_backspace(void){
 
 void InitSystemLog(uint32_t x, uint32_t y, uint32_t w, uint32_t h){
     
+    intui = (intuition_t*)executive->OpenLibrary("intuition.library",0);
     
     sysLogWindow = NULL;
-    sysLogWindow = OpenWindow(NULL, x, y, w, h,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "SysLog");
+    sysLogWindow = intui->OpenWindowPrivate(NULL, x, y, w, h,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "SysLog");
     
-    SetScreenTitle(sysLogWindow,scrTit);
+    intui->SetScreenTitle(sysLogWindow,scrTit);
     
     sysLogWidth = ((w - 4) / 8) - 1;
     sysLogHeight = ((h - 22) / 16) ;

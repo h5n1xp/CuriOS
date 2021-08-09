@@ -16,6 +16,9 @@
 
 dos_t dos;
 
+
+
+
 //***************** ELF LOADING STRUCTURES
 
 typedef struct {
@@ -57,15 +60,10 @@ typedef struct {
     uint16_t        st_shndx;
 } Elf32_Symbol_t;
 
-typedef struct{
-    void (*Call)(void);
-} exec_t;
 
-exec_t test;
 
-void Test(void){
-    debug_write_string("This Happened!\n");
-}
+
+
 
 
 //forward declare this function
@@ -423,35 +421,66 @@ void LoadELF(file_t* file){
         return;
     }
   
-    //Check it is a relocatable object
-    if(header->e_type != 1){
-        debug_write_string("File not Relocatable\n");
+    //Check it is an executible ELF
+    if(header->e_type != 2){
+        debug_write_string("File not Executable\n");
         executive->FreeMem(buffer);
         return;
     }
     
     
+    // the text section always starts at offest 4096, but really we should look at the Program Header Tables to find PT_LOAD segments and load them
+    uint32_t codeStart = 4096;
+    
+    //check for magic number, identifying this as a CuriOS executable
+    uint32_t* magic = (uint32_t*)&buffer[codeStart];
+    if(*magic != 0x80DECADE){
+        debug_write_string("File not a Curios Executable/Library\n");
+        executive->FreeMem(buffer);
+        return;
+    }
+    
+    
+    //Fix up the executive pointer
     Elf32_Section_Header_t* sectionTable = (Elf32_Section_Header_t*) &buffer[header->e_shoff];
     
     //String Section
     Elf32_Section_Header_t stringTableHeader = sectionTable[header->e_shstrndx];
-    
     char* strings = (char*) &buffer[stringTableHeader.sh_offset];
     
-    //Walk the table, first entry is always NULL
-    debug_write_string("Sections:\n");
+    //Walk the secton table, first entry is always NULL
+    //debug_write_string("Sections:\n");
     for(int i=1; i < header->e_shnum; ++i){
         
         Elf32_Section_Header_t entry = sectionTable[i];
-        debug_write_dec(i);debug_write_string(": ");
-        debug_write_string(&strings[entry.sh_name]); debug_putchar('\n');
+        //debug_write_dec(i);debug_write_string(": ");
+        //debug_write_string(&strings[entry.sh_name]); debug_putchar(' ');
+        
+        //Find the executive section
+        if(!strcmp(&strings[entry.sh_name],".executive")){
+            //debug_putchar(' ');debug_write_dec(entry.sh_offset);
+            
+            //Fixup the executive pointer
+            uint32_t* exec =  (uint32_t*) &buffer[entry.sh_offset];
+            *exec = (uint32_t) executive;
+            
+        }
+        
+        //debug_putchar('\n');
+        
     }
+   
     
-    //void (*mn)() = &buffer[64];
-    //uint32_t* rel = &buffer[66];
-    //*rel = (uint32_t)&test;
-    //mn();
     
+    //Entry function
+    void* tmp = &buffer[4096 + header->e_entry];
+    
+    void (*mn)() = tmp;
+    mn();
+    
+
+        
+    //debug_write_string("ELF Executed.\n");
     
     executive->FreeMem(buffer);
 }

@@ -77,7 +77,7 @@ static void timer_callback(registers_t* regs){
     if(fakeVBLCountDown == 0){
         fakeVBLCountDown = 15;  //approximately 60Hz which would be 16.67ms
         executive->SignalPrivate(regs, inputStruct.inputTask,2); //will cause an immediate reschedule
-        //inputStruct.inputTask->signalReceived = (2); // will reschedule next quantum
+        //inputStruct.inputTask->signalReceived = 2; // will reschedule next quantum
     }else if(executive->elapsed<=0){
         executive->ReschedulePrivate(&regs->link);
     }else if(!TestLock(&simpleTimer.lock)){

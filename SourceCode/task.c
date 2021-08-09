@@ -76,10 +76,10 @@ void PrintFreeList(){
 
 
 
-
+/*
 int under(){
     
-
+    // No longer in use..
     
     int ballX = 40;
     int ballY = 40;
@@ -117,6 +117,7 @@ int under(){
     
     return 0;
 }
+*/
 
 
 int over(){
@@ -126,12 +127,11 @@ int over(){
     int ballVX = 1;
     int ballVY = 1;
     
-    
     intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
     
-    window_t* gfxTest = OpenWindow(NULL,650,550,320,200,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_CLOSE_GADGET,"GFX Drawing Test");
+    window_t* gfxTest = intuibase->OpenWindowPrivate(NULL,650,550,320,200,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_CLOSE_GADGET,"GFX Drawing Test");
     
-    SetScreenTitle(gfxTest,"Program draws Amiga Vector Images!");
+    intuibase->SetScreenTitle(gfxTest,"Program draws Amiga Vector Images!");
     gfxTest->isBusy = true;
     
     intuibase->DrawRectangle(gfxTest,30,30,200,160,intuibase->white);
@@ -142,24 +142,23 @@ int over(){
     intuibase->DrawVectorImage(gfxTest,70,40,kickStartBootImage);
     
     
-    window_t* under = OpenWindow(NULL, 600, 420, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "Over");
-    Focus(under);
+    window_t* under = intuibase->OpenWindowPrivate(NULL, 600, 420, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "Over");
+    intuibase->Focus(under);
     
-    SetScreenTitle(under,"Yet another Random Test Program");
+    intuibase->SetScreenTitle(under,"Yet another Random Test Program");
 
     
     
     while(1) {
         
             //animate one window
-            DrawRectangle(under, ballX, ballY, 9, 9, under->backgroundColour);
+            intuibase->DrawRectangle(under, ballX, ballY, 9, 9, under->backgroundColour);
             ballX += ballVX;
             ballY += ballVY;
         
             if(ballX>186 || ballX<6){ballVX = -ballVX;}
             if(ballY>106 || ballY<24){ballVY = -ballVY;}
         
-            //DrawRectangle(under, ballX, ballY, 8, 8, intuition.orange);
             intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
             intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
         
@@ -174,6 +173,15 @@ int over(){
 
 int receiverT(){
     
+    //Get the executive address from the top of the first megabyte
+    //uint32_t* temp = (uint32_t*)0x100000;
+    //executive_t* sysbase = (executive_t*)*temp;
+    
+    executive_t* sysbase = (executive_t*) *(void_ptr*)0x100000;
+    
+    //sysbase->Test();
+    //debug_write_hex((uint32_t)sysbase);debug_putchar('\n');
+    
     int ballX = 40;
     int ballY = 40;
     int ballVX = 2;
@@ -181,10 +189,10 @@ int receiverT(){
     
     intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
     
-    window_t* under = OpenWindow(NULL, 810, 420, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "Message Receiver");
-    WindowToFront(under);
+    window_t* under = intuibase->OpenWindowPrivate(NULL, 810, 420, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "Message Receiver");
+    intuibase->WindowToFront(under);
     
-    SetScreenTitle(under,"Test Program, which only updates when it receives a message from a counting task!");
+    intuibase->SetScreenTitle(under,"Test Program, which only updates when it receives a message from a counting task!");
     
     under->eventPort = executive->CreatePort("eventPort");
     
@@ -197,7 +205,7 @@ int receiverT(){
     while(1) {
         
 
-        uint64_t sigRec = executive->Wait( 1 << testPort->sigNum | 1 << under->eventPort->sigNum);
+        uint64_t sigRec = sysbase->Wait( 1 << testPort->sigNum | 1 << under->eventPort->sigNum);
         
         
         //resize window
@@ -208,7 +216,7 @@ int receiverT(){
             while(event != NULL){
                 
                 if(event->flags & WINDOW_EVENT_RESIZE){
-                    ResizeWindow(under, event->window->w - event->mouseXrel, event->window->h - event->mouseYrel);
+                    intuibase->ResizeWindow(under, event->window->w - event->mouseXrel, event->window->h - event->mouseYrel);
 
                     if((uint32_t)ballX > (under->innerW-14)){ballX = 10;}
                     if((uint32_t)ballY > (under->innerH-12)){ballY = 24;}
@@ -223,7 +231,7 @@ int receiverT(){
         
         
         //animate one window
-        DrawRectangle(under, ballX, ballY, 9, 9, under->backgroundColour);
+        intuibase->DrawRectangle(under, ballX, ballY, 9, 9, under->backgroundColour);
         if(sigRec & 1 << testPort->sigNum){
             
             message_t* message = GetMessage(testPort);
@@ -245,7 +253,7 @@ int receiverT(){
             }
             //debug_write_string("<-\n");
         }
-        //DrawRectangle(under, ballX, ballY, 8, 8, intuition.orange);
+        
         intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
         intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
        
@@ -302,7 +310,7 @@ int outputee(){
 
 //*******************************************************************************************************************************************************************
 
-//Should be the first function your task will call
+/*
 void* TaskStartup(){
    
     void_ptr kernel;
@@ -310,7 +318,8 @@ void* TaskStartup(){
     
     return (void*)kernel;
 }
-
+*/
+ 
 void SetTaskPri(task_t* task,int32_t pri){
     
     task->node.priority = pri;
@@ -349,7 +358,7 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     
     frame->ss = 0x23;               // 0x23 is the user mode data segment, where the stack is
     frame->useresp = task->usp_top;
-    frame->eflags = 0x3246; //or 582?
+    frame->eflags = 0x3246;         //or 582?
     frame->cs = 0x1B;                //0x8 is supervisor mode code segment, 0x1b is user mode code segment
     frame->eip = (uint32_t)entry;
     frame->ds = 0x23;
@@ -555,6 +564,16 @@ static void signal_trap(registers_t* regs);
 static void wait_trap(registers_t* regs);
 
 void InitMultitasking(){
+    //**************************************************************
+    // Write the address of the executive to address: 0x100000 (to top of the first megabyte)
+    // This address isn't used for anything once the multiboot header has been read
+    // So we are using it as the sysbase
+    
+    uint32_t* sysbase  = (uint32_t*)0x100000;
+    *sysbase = (uint32_t)executive;
+    
+    debug_write_hex((uint32_t)executive);debug_putchar('\n');
+
     
     register_interrupt_handler(48, signal_trap); //  fire int48 for immediate reschedule
     register_interrupt_handler(49, wait_trap);   //  int49 interrupt to wait a task.
@@ -572,47 +591,27 @@ void InitMultitasking(){
     
     
     inputStruct.inputTask = AddTask(InputTaskEntry,65536,20);
-
     
+    //Add the boot task, this task should be responsible for setting up the system.
     task = AddTask(CliEntry,4096*2,0);  //double stack for Boot task... it has a lot to do...
     task->node.name = "BootShell";
+    
 
+    // Three Test tasks to be removed after debugging.
     task = AddTask(outputee,4096,0);
     task->node.name = "Message Sender";
 
-     task = AddTask(over,4096,0);
-     task->node.name = "Over Ball bounce";
+    task = AddTask(over,4096,0);
+    task->node.name = "Over Ball bounce";
     
-    task = AddTask(receiverT,4096,10);
+    task = AddTask(receiverT,4096,0);
     task->node.name = "Message Receiver";
      
      //task = AddTask(under,4096,0);
      //task->node.name = "Under Ball Bounce";
-     
-     
-     /*
-     //Don't bother with these....
 
     
-
-    
-     task = AddTask(tockTask,4096,0);
-     task->node.name = "cheese muffin";
-    
-     publicTask = AddTask(tockTask1,4096,0);
-     publicTask->node.name = "Smoople";
-  
-
-     //
-     task = addTask(tockTask6,4096,0);
-     task->name = tockTaskName6;
-     
-     task = addTask(tockTask7,4096,0);
-     task->name = tockTaskName7;
-     */
-
-    
-    executive->thisTask=NULL;
+    executive->thisTask          = NULL;
     
     executive->AddTask           = AddTask;
     executive->Wait              = Wait;

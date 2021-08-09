@@ -59,7 +59,7 @@ struct window_t{
     
     lock_t clipRectsLock;   //always lock the cliprects list before using.
     uint32_t clipRects;
-    clipRect_t clipRect[64];    //Very large, but only consumes 3072bytes per window
+    clipRect_t clipRect[256];    //Very large, but only consumes 6,144bytes per window
 };
 
 #define GADGET_FLAG_ORIGIN_RIGHT    1
@@ -97,6 +97,9 @@ struct gadget_t{
 #define WINDOW_EVENT_RESIZE     0x1
 #define WINDOW_EVENT_RESIZE_END 0x2
 #define WINDOW_EVENT_KEYDOWN    0x4
+
+#define INTUITION_REQUEST_OPEN_WINDOW 0x1 //when received by intuition, will enqueue the window, event data points to windowList
+
 
 typedef struct{
     message_t   message;
@@ -170,7 +173,7 @@ typedef struct{
     uint32_t systemCloseY;
     uint32_t systemCloseW;
     uint32_t systemCloseH;
-    
+    void (*Update)(void);
     window_t* (*OpenWindow)(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
     void (*SetTheme)(int value);
     void (*DrawDecoration)(window_t* window);
@@ -198,41 +201,16 @@ typedef struct{
     void (*RedrawWindow)(window_t* window);
     gadget_t* (*CreateGadget)(window_t* window,uint32_t flags);
     window_t* (*Request)(char* title);
+    
+    //Private functions may be removed
+    window_t* (*OpenWindowPrivate)(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
+    
+    list_t* windowList;
+    messagePort_t* intuiPort;
 } intuition_t;
 
 extern intuition_t intuition;
 
 void LoadIntuitionLibrary(void);
-void updateMouse(void);
-void clearMouse(void);
-void drawMouse(void);
-
-
-extern list_t windowList;
-extern volatile int32_t mouseX;
-extern volatile int32_t mouseY;
-extern int32_t mouseXold;
-extern int32_t mouseYold;
-
-
-// The functions below shouldn't really be here, anything using intutuion should be using the proper interface by now!!.
-window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
-void SetScreenTitle(window_t* window,char* title);
-void MoveWindow(window_t* window,int32_t x, int32_t y);
-void Focus(window_t* window);
-void ResizeWindow(window_t*, uint32_t, uint32_t );
-
-void IntuitionUpdate(void);
-void RedrawWindow(window_t* window);
-
-void WindowToBack(window_t* window);
-void WindowToFront(window_t* window);
-void PriorityOrderPrivate(window_t* window);
-
-
-// drawing functions
-void Plot(window_t* window,uint32_t x, uint32_t y, uint32_t colour);
-void PutChar(window_t*, uint32_t x, uint32_t y, uint8_t character, uint32_t fColour, uint32_t bColour);
-void DrawRectangle(window_t* window,uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t colour);
 
 #endif /* intuition_h */
