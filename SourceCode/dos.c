@@ -376,16 +376,13 @@ uint8_t* LoadFile(file_t* file){
 
 
 //************************* LOAD RELOCATABLE ELF OBJECTS
-executable_t LoadELF(file_t* file){
+void LoadELF(file_t* file){
     executive->thisTask->dosError = DOS_ERROR_NO_ERROR;
     //debug_write_string("loading File\n");
     
-    executable_t ret;
-    ret.type = 0;   //Not executable
-    
     if(file->isDIR){
         executive->thisTask->dosError = DOS_ERROR_OBJECT_NOT_OF_REQUIRED_TYPE;
-        return ret;
+        return;
     }
     
     //Get the handler
@@ -399,19 +396,19 @@ executable_t LoadELF(file_t* file){
     if(*check != 1179403647){
         debug_write_string("File Not Executable\n");
         executive->FreeMem(buffer);
-        return ret;
+        return;
     }
     
     if(buffer[4] != 1){
         debug_write_string("Can't Load 64bit files\n");
         executive->FreeMem(buffer);
-        return ret;
+        return;
     }
     
     if(buffer[5] != 1){
         debug_write_string("Can't Load Big Endian files\n");
         executive->FreeMem(buffer);
-        return ret;
+        return;
     }
     
     //It's a vaild ELF
@@ -421,14 +418,14 @@ executable_t LoadELF(file_t* file){
     if(header->e_machine != 3){
         debug_write_string("File not x86 executable\n");
         executive->FreeMem(buffer);
-        return ret;
+        return;
     }
   
     //Check it is an executible ELF
     if(header->e_type != 2){
         debug_write_string("File not Executable\n");
         executive->FreeMem(buffer);
-        return ret;
+        return;
     }
     
     
@@ -440,7 +437,7 @@ executable_t LoadELF(file_t* file){
     if(*magic != 0x80DECADE){
         debug_write_string("File not a Curios Executable/Library\n");
         executive->FreeMem(buffer);
-        return ret;
+        return;
     }
     
     
@@ -476,17 +473,16 @@ executable_t LoadELF(file_t* file){
     
     
     //Entry function
-    ret.type = 1;
-    ret.segment = buffer;
-    ret.entry = &buffer[4096 + header->e_entry];
+    void* tmp = &buffer[4096 + header->e_entry];
+    
+    void (*mn)() = tmp;
+    mn();
     
 
-    
-    return ret;
         
     //debug_write_string("ELF Executed.\n");
     
-    //executive->FreeMem(buffer);
+    executive->FreeMem(buffer);
 }
 
 

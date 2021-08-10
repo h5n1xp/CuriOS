@@ -16,7 +16,6 @@
 #define TASK_WAITING 1
 #define TASK_READY 2
 #define TASK_RUNNING 3
-#define TASK_ENDED 4
 
 
 typedef struct task_t task_t;
