@@ -50,23 +50,37 @@ void isr_handler(registers_t regs){
     uint8_t int_no = regs.int_no & 0xFF;
 
     if(int_no<20){
-        
-        debug_write_string("\nGuru Meditation: ");
-        debug_write_string("Task - ");
-        
         task_t* task = executive->thisTask;
+        executive->AddHead(&executive->taskSuspended,(node_t*)task); // move to the suspended list
+        executive->thisTask = NULL;
+        executive->ReschedulePrivate(&regs.link);   //schedule in next task
+               
+                           
+        //Task didn't crash it ended
+        if(task->state == TASK_ENDED){
+            
+            //need to clean up the ended tasks from the suspended list somehow.
+            return;
+        }
+        
+                           
+        //The task defineitly crashed :(
+        task->state = TASK_SUSPENDED;
+                           
+        debug_write_string("\nGuru Meditation! ");
+        debug_write_string("Task: ");
+        
+
         debug_write_string(task->node.name);
         
         //terminal_write_hex((uint32_t)kernel->runningTask);
-        debug_write_string(" ");
+        debug_write_string(" - ");
         debug_write_string(trap_strs[int_no]);
         debug_write_string(" \n");
         
-        //suspend faulty task
-        //executive->SuspendTask(executive->thisTask);
-        executive->AddHead(&executive->taskSuspended,(node_t*)executive->thisTask);
-        executive->thisTask = NULL;
-        executive->ReschedulePrivate(&regs.link);
+
+
+
         debug_write_string(" Task Suspended!\n");
         intuition_t* intuibase =(intuition_t*)executive->OpenLibrary("intuition.library",0);
         window_t* req = intuibase->Request("Software Failure");
@@ -74,11 +88,6 @@ void isr_handler(registers_t regs){
         intuibase->DrawString(req,18,30+20,task->node.name,intuibase->blue,intuibase->white);
         intuibase->DrawString(req,18,30+40,trap_strs[int_no],intuibase->blue,intuibase->white);
         intuibase->Update();
-         
-        //Halt the system.
-        //terminal_writestring(" !System Halted!\n");
-        //asm volatile("cli");
-        //asm volatile("hlt");
         return;
     }
 

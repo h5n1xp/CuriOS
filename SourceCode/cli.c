@@ -19,7 +19,7 @@
 
 #include "SystemLog.h"
 
-
+#include "timer.h"
 
 int32_t width;
 int32_t height;
@@ -318,6 +318,310 @@ void ConsoleMoveCursorX(window_t* console, int rx){
     }
     
 }
+
+
+
+
+
+
+
+
+
+
+
+//DEBUGGING TASKS!!!!!
+/*
+int outputee(){
+    
+    //executive->thisTask->node.name = "No window";
+     
+    messagePort_t* rep = CreatePort("Reply here!");
+    
+    message_t* mess = NULL;
+    
+    
+    messagePort_t* testPort = NULL;
+    
+    while(1){
+        
+                
+        //debug_write_hex((uint32_t)&mess);debug_write_string(" -> ");
+            
+                if(testPort != NULL){
+                    
+                    mess = (message_t*)executive->Alloc(sizeof(message_t));
+                    
+                    if(mess != NULL){
+                        
+                        mess->replyPort = rep;
+                        PutMessage(testPort,mess);
+                        
+                        
+                    }else{
+                        debug_write_string("No memory for message!\n");
+                    }
+                    
+                }else{
+                    testPort = FindPort("Monkey");
+                    
+                    if(testPort==NULL){
+                        debug_write_string("Sender Task: Can't find port\n");
+                    }
+                }
+                
+       WaitMS(64);
+    }
+    
+    return 0;
+}
+*/
+
+
+int over(){
+    
+    int ballX = 40;
+    int ballY = 40;
+    int ballVX = 1;
+    int ballVY = 1;
+    
+    intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
+    
+    window_t* gfxTest = intuibase->OpenWindowPrivate(NULL,650,550,320,200,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET,"GFX Drawing Test");
+    
+    intuibase->SetScreenTitle(gfxTest,"Program draws Amiga Vector Images!");
+    gfxTest->isBusy = true;
+    
+    intuibase->DrawRectangle(gfxTest,30,30,200,160,intuibase->white);
+    intuibase->DrawLine(gfxTest,5,25,50,90,intuition.black);
+    intuibase->DrawCircle(gfxTest,50,55,32,intuition.black, false);
+    intuibase->FloodFill(gfxTest,50,55,intuition.orange);
+    
+    intuibase->DrawVectorImage(gfxTest,70,40,kickStartBootImage);
+    
+    
+    window_t* under = intuibase->OpenWindowPrivate(NULL, 600, 420, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "Over");
+    intuibase->Focus(under);
+    
+    intuibase->SetScreenTitle(under,"Yet another Random Test Program");
+
+    
+    
+    while(1) {
+        
+            //animate one window
+            intuibase->DrawRectangle(under, ballX, ballY, 9, 9, under->backgroundColour);
+            ballX += ballVX;
+            ballY += ballVY;
+        
+            if(ballX>186 || ballX<6){ballVX = -ballVX;}
+            if(ballY>106 || ballY<24){ballVY = -ballVY;}
+        
+            intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
+            intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
+        
+        under->needsRedraw = true;
+        WaitMS(1);
+    }
+    
+    return 0;
+}
+
+
+/*
+int receiverT(){
+    
+    
+    int ballX = 40;
+    int ballY = 40;
+    int ballVX = 2;
+    int ballVY = 2;
+    
+    intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
+    
+    window_t* under = intuibase->OpenWindowPrivate(NULL, 810, 420, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "Message Receiver");
+    intuibase->WindowToFront(under);
+    
+    intuibase->SetScreenTitle(under,"Test Program, which only updates when it receives a message from a counting task!");
+    
+    under->eventPort = executive->CreatePort("eventPort");
+    
+    messagePort_t* testPort = executive->CreatePort("Monkey");
+    
+    AddPort(testPort);
+    
+
+    
+    while(1) {
+        
+
+        uint64_t sigRec = executive->Wait( 1 << testPort->sigNum | 1 << under->eventPort->sigNum);
+        
+        
+        //resize window
+        if(sigRec & 1 << under->eventPort->sigNum){
+
+            intuitionEvent_t* event =(intuitionEvent_t*) GetMessage(under->eventPort);
+            
+            while(event != NULL){
+                
+                if(event->flags & WINDOW_EVENT_RESIZE){
+                    intuibase->ResizeWindow(under, event->window->w - event->mouseXrel, event->window->h - event->mouseYrel);
+
+                    if((uint32_t)ballX > (under->innerW-14)){ballX = 10;}
+                    if((uint32_t)ballY > (under->innerH-12)){ballY = 24;}
+                    
+                }
+                
+                executive->ReplyMessage((message_t*)event);
+                event = (intuitionEvent_t*) GetMessage(under->eventPort);
+            }
+            
+        }
+        
+        
+        //animate one window
+        intuibase->DrawRectangle(under, ballX, ballY, 9, 9, under->backgroundColour);
+        if(sigRec & 1 << testPort->sigNum){
+            
+            message_t* message = GetMessage(testPort);
+            
+            // debug_write_string("->");
+            
+            while(message != NULL){
+            
+                ballX += ballVX;
+                ballY += ballVY;
+                
+                if((uint32_t)ballX >= under->innerW-10 || (uint32_t)ballX <= under->innerX+2){ballVX = -ballVX;}
+                if((uint32_t)ballY >= under->innerH-10 || (uint32_t)ballY <= under->innerY+2){ballVY = -ballVY;}
+                
+                //executive->Dealloc((node_t*)message);
+                executive->ReplyMessage(message);
+                message = GetMessage(testPort);
+                //debug_write_string("!");
+            }
+            //debug_write_string("<-\n");
+        }
+        
+        intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
+        intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
+       
+    }
+    
+    return 0;
+}
+*/
+
+
+
+
+
+
+
+
+void bouncy(){
+    
+    int ballX = 40;
+    int ballY = 40;
+    int ballVX = 1;
+    int ballVY = 1;
+
+    
+    intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
+    
+    if(intuibase == NULL){
+        return;
+    }
+    
+    window_t* under = intuibase->OpenWindow(NULL, 0, 0, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE | WINDOW_CLOSE_GADGET | WINDOW_VSYNC, "Bouncy!");
+    
+    if(under == NULL){
+        return;
+    }
+    
+    intuibase->Focus(under);
+    
+    intuibase->SetScreenTitle(under,"A Real Program!!!");
+    
+    under->eventPort = executive->CreatePort("eventPort");
+    
+    
+    
+    
+    
+
+
+    int running = 1;
+
+    while(running) {
+        
+        uint64_t sigRec = executive->Wait(1 << under->eventPort->sigNum);
+        
+        
+        //resize window
+        if(sigRec & 1 << under->eventPort->sigNum){
+
+            intuitionEvent_t* event =(intuitionEvent_t*) executive->GetMessage(under->eventPort);
+            
+            while(event != NULL){
+                
+                if(event->flags & WINDOW_EVENT_RESIZE){
+                    intuibase->ResizeWindow(under, event->window->w - event->mouseXrel, event->window->h - event->mouseYrel);
+
+                    if((uint32_t)ballX > (under->innerW-14)){ballX = 10;}
+                    if((uint32_t)ballY > (under->innerH-12)){ballY = 24;}
+                    
+                }
+                
+                if(event->flags & WINDOW_EVENT_VSYNC){
+                    
+                    //animate
+                    intuibase->DrawRectangle(under, ballX, ballY, 9, 9, under->backgroundColour);
+                 
+                    
+                    ballX += ballVX;
+                    ballY += ballVY;
+                            
+                    if((uint32_t)ballX >= under->innerW-10 || (uint32_t)ballX <= under->innerX+2){ballVX = -ballVX;}
+                    if((uint32_t)ballY >= under->innerH-10 || (uint32_t)ballY <= under->innerY+2){ballVY = -ballVY;}
+                            
+
+                    intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
+                    intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
+                    
+                    
+                }
+                
+                if(event->flags & WINDOW_EVENT_CLOSE){
+                    running = 0;
+                    executive->ReplyMessage((message_t*)event);
+                    intuibase->CloseWindow(under);
+                    break;
+                }
+                
+                executive->ReplyMessage((message_t*)event);
+                event = (intuitionEvent_t*) executive->GetMessage(under->eventPort);
+            }
+            
+        }
+        
+
+    }
+    
+    //return 0;
+
+    executive->thisTask->state = TASK_ENDED;
+    running = running / 0;  // pursposely crash the task.
+    
+}
+
+
+
+
+
+
+
+
 
 // Command Interpretor ***************************************************************
 dos_t* dosbase;
@@ -758,6 +1062,16 @@ void processCommand(int commandLength){
         ConsoleWriteString(console,"New Window\n");
         return;
     }
+  
+    if(strcmp(commandBuffer,"b") == 0){
+        executive->AddTask(over,4096,0);
+        return;
+    }
+ 
+    if(strcmp(commandBuffer,"c") == 0){
+        executive->AddTask(bouncy,4096,0);
+        return;
+    }
     
     ConsoleWriteString(console,"Unknown Command ");
     ConsoleWriteString(console,arguments[0]);
@@ -772,11 +1086,52 @@ void processCommand(int commandLength){
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int CliEntry(void){
     
     
     //The Boot Task should be responsible for loading the initial Libraries and devices into memory.
+    
+    /*
+    // Three Test tasks to be removed after debugging.
+    task_t* task = executive->AddTask(outputee,4096,0);
+    task->node.name = "Message Sender";
 
+    task = executive->AddTask(over,4096,0);
+    task->node.name = "Over Ball bounce";
+    
+    task = executive->AddTask(receiverT,4096,0);
+    task->node.name = "Message Receiver";
+    */
+    
+    
+    
     //setup the ata device as early as possible before the DOS Library, if the ATA device isn't ready DOS will hang the machine.
     LoadATADevice();
     executive->AddDevice((device_t*)&ata);

@@ -15,10 +15,19 @@
 .set mode_type, 0   //Linear framebuffer please
 .set width, 1024  //1024 //1280 /1280 /640 /1440
 .set height, 768    //768 //800 /720 /480 /900
+
 //.set width, 1280  //1024 //1280 /1280 /640 /1440
 //.set height, 720    //768 //800 /720 /480 /900
+
+//.set width, 1440  //1024 //1280 /1280 /640 /1440
+//.set height, 900    //768 //800 /720 /480 /900
+
 //.set width, 1920    //1024 //1280 /1280 /640 /1440
 //.set height, 1200    //768 //800 /720 /480 /900
+
+//.set width, 3840    NOT SUPPORTED BY VBE
+//.set height, 2160   NOT SUPPORTED BY VBE
+
 
 .set depth, 32
 

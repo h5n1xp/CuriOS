@@ -26,7 +26,7 @@ typedef struct{
 extern inputStruct_t inputStruct;
 
 
-int InputTaskEntry();
+void InputTaskEntry();
 
 
 #endif /* input_h */

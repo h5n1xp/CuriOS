@@ -33,7 +33,7 @@ uint8_t scancode[] ={' ',' ','1','2','3','4','5','6','7','8','9','0','-','=',' '
 
 void processKeyboardBuffer(uint8_t);
 
-int InputTaskEntry(){
+void InputTaskEntry(){
     
     intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
     
@@ -47,7 +47,6 @@ int InputTaskEntry(){
     graphics.RenderString(inputStruct.screenTitle->bitmap,intuition.defaultFont, 4,2,"System Screen",intuition.blue,intuition.white);
     
     inputStruct.screenTitle->node.priority = 100;
-    //intuibase->
     intuibase->PriorityOrderPrivate(inputStruct.screenTitle);
     
     executive->thisTask->node.name = inputTaskName;
@@ -57,7 +56,139 @@ int InputTaskEntry(){
         
         uint64_t signals = executive->Wait(2 | 1 << intuibase->intuiPort->sigNum); // signal 2 being the interrupt signal
         
+        //message received
+        
+        if(signals & (1 << intuibase->intuiPort->sigNum ) ){ // && 0 means this will never execute
+            
+            intuitionEvent_t* event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
+            
+            //debug_write_hex(event->flags);debug_putchar(' ');intuibase->Update();
+            
+            
+            while(event != NULL){
+                
+                if(event->flags & WINDOW_EVENT_REQUEST_OPEN_WINDOW){
+                    //debug_putchar('>');debug_putchar(' ');intuibase->Update();
 
+                    
+                    executive->Enqueue( intuibase->windowList, (node_t*)event->window);
+                    event->window->needsRedraw = true;
+                    intuibase->updateLayers(event->window);
+                    
+                    //debug_write_string("Intution Rquest received: ");
+                    //debug_write_string(list->node.name);debug_putchar(' ');
+                    //debug_write_string(event->window->node.name);debug_putchar('\n');
+                }
+                
+                if(event->flags & WINDOW_EVENT_REQUEST_CLOSE_WINDOW){
+                    //debug_putchar('>');debug_putchar(' ');intuibase->Update();
+                 
+                    
+                    executive->Remove( intuibase->windowList, (node_t*)event->window);
+                    window_t* newFront = (window_t*)intuibase->windowList->pred;
+                    newFront->needsRedraw = true;
+                    intuibase->updateLayers(NULL);
+                    
+                    //debug_write_string("Intution Rquest received: ");
+                    //debug_write_string(list->node.name);debug_putchar(' ');
+                    //debug_write_string(event->window->node.name);debug_putchar('\n');
+                }
+                
+                /*
+                if(event->flags & WINDOW_EVENT_REQUEST_RESIZE_WINDOW){
+                    //debug_putchar('>');debug_putchar(' ');intuibase->Update();
+                    event->window->needsRedraw = false;
+                    event->window->w = event->mouseX;
+                    event->window->h = event->mouseY;
+                    intuibase->GimmeZeroZero(event->window);
+                    event->window->bitmap = event->data;
+                    
+                    //It's a bit hacky to just signal without sending a message, but this is all internal to intution
+                    executive->Signal(event->message.replyPort->owner,1 << event->message.replyPort->sigNum); //signal task resize is complete
+                    event->message.replyPort = NULL;    // don't sent message back when replying
+                
+                }
+                */
+                
+                if(event->flags & WINDOW_EVENT_REQUEST_RESIZE_WINDOW){
+
+                    event->window->needsRedraw = false;
+                    event->window->w = event->mouseX;
+                    event->window->h = event->mouseY;
+                    intuibase->GimmeZeroZero(event->window);
+                    event->window->bitmap = event->data;
+                    
+                    intuibase->updateLayers(event->window);
+                    
+                    graphics.ClearBitmap(event->window->bitmap,event->window->backgroundColour); // This should use the proper window clear function....
+                    intuition.DrawDecoration(event->window);
+        
+                    
+                    //It's a bit hacky to just signal without sending a message, but this is all internal to intution
+                    executive->Signal(event->message.replyPort->owner,1 << event->message.replyPort->sigNum); //signal task resize is complete
+                    event->message.replyPort = NULL;    // don't sent message back when replying
+                
+                }
+                
+                
+                if(event->flags & WINDOW_EVENT_REQUEST_DRAW_TO_WINDOW){
+                    debug_write_string("Intution Draw Request received: ");
+                
+                    bitmap_t* bm    = event->window->bitmap;
+                    uint32_t colour = (uint32_t)event->data;
+                    uint8_t command = event->rawKey;
+                    uint8_t flags   = event->scancode;
+                    uint32_t x1     = event->mouseX;
+                    uint32_t y1     = event->mouseY;
+                    uint32_t x2     = event->mouseXrel;
+                    uint32_t y2     = event->mouseYrel;
+                    
+                    switch (command) {
+                        case WINDOW_DRAW_COMMAND_PLOT:
+                            graphics.PutPixel(bm, x1, y1, colour);
+                            break;
+ 
+                        case WINDOW_DRAW_COMMAND_CLEAR:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_PUTCHAR:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_STRING:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_RECTANGLE:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_LINE:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_FILL:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_CIRCLE:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_TRIANGLE:
+                            break;
+                            
+                        case WINDOW_DRAW_COMMAND_VECTOR:
+                            break;
+                            
+                        default:
+                            break;
+                    }
+                    
+                    
+                    //debug_putchar('\n');
+                }
+                
+                executive->ReplyMessage((message_t*)event);
+                event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
+            }
+           
+        }
+        
         //interrupt received
         if(signals & 2){
         
@@ -70,47 +201,6 @@ int InputTaskEntry(){
         
             //Generate Intuition Events
             intuibase->Update();
-            
-        }
-        
-        //message received
-        if(signals & (1 << intuibase->intuiPort->sigNum) ){
-        
-            intuitionEvent_t* event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
-            
-            while(event != NULL){
-                
-                if(event->flags & INTUITION_REQUEST_OPEN_WINDOW){
-
-                    list_t* list = (list_t*)event->data;
-                    
-                    executive->Enqueue( list, (node_t*)event->window);
-                    
-                    intuibase->needsUpdate = true;
-                    event->window->needsRedraw = true;
-                    
-                    
-                    //debug_write_string("Intution Rquest received: ");
-                    //debug_write_string(list->node.name);debug_putchar(' ');
-                    //debug_write_string(event->window->node.name);debug_putchar('\n');
-                }
-                
-                if(event->flags & INTUITION_REQUEST_CLOSE_WINDOW){
-
-                    list_t* list = (list_t*)event->data;
-                    
-                    executive->Remove( list, (node_t*)event->window);
-                    
-                    intuibase->needsUpdate = true;
-                    
-                    //debug_write_string("Intution Rquest received: ");
-                    //debug_write_string(list->node.name);debug_putchar(' ');
-                    //debug_write_string(event->window->node.name);debug_putchar('\n');
-                }
-                
-                executive->ReplyMessage((message_t*)event);
-                event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
-            }
             
         }
         

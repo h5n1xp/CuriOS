@@ -30,6 +30,7 @@ void clear_cursor(void){
     if(sysLogWindow==NULL){return;}
     
     intui->DrawRectangle(sysLogWindow,curX, curY, 8, 16, sysLogWindow->backgroundColour);
+    sysLogWindow->needsRedraw = true;
 }
 
 void draw_cursor(uint32_t x,uint32_t y){
@@ -39,11 +40,13 @@ void draw_cursor(uint32_t x,uint32_t y){
     curX = (x*8)+4;
     curY = (y*16)+22;
     intui->DrawRectangle(sysLogWindow,curX, curY, 8, 16, sysLogWindow->highlightColour);
+    sysLogWindow->needsRedraw = true;
 }
 
 void debug_putchar_at(uint32_t x, uint32_t y, uint8_t c){
     sysLogBuffer[(y*sysLogWidth) + x] = c;
     intui->PutChar(sysLogWindow, (x*8)+4, (y*16)+22, c, sysLogWindow->foregroundColour, sysLogWindow->backgroundColour);
+    sysLogWindow->needsRedraw = true;
 }
 
 void debug_scroll_one_line(){
