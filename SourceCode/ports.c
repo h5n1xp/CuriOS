@@ -29,6 +29,9 @@ messagePort_t* CreatePort(char* name){
 
 void DeletePort(messagePort_t* port){
     
+    //TO DO: NEED TO REPLY TO ALL MESSAGES STILL QUEUED
+    //
+    //
     executive->FreeSignal(port->sigNum);
     executive->Dealloc((node_t*)port);
     
@@ -51,50 +54,25 @@ message_t* GetMessage(messagePort_t* port){
 }
 
 void PutMessage(messagePort_t* port, message_t* message){
-    //debug_write_string("Exec: Put Message->");
-    //debug_write_string(port->node.name);
-    //debug_putchar(' ');
-    /* //THis code is likely NOT Reenterant
-    Lock(&port->messageList.lock);
-    message->timestamp = executive->ticks;
-    list_t* messageList = &port->messageList;
-    AddTail(messageList,(node_t*)message);
-    FreeLock(&port->messageList.lock);
-    debug_write_string(" Done\n");
-    executive->Signal(port->owner,1 << port->sigNum);
-    */
-    
+
     Lock(&port->messageList.lock);
     AddTail(&port->messageList,(node_t*)message);
     FreeLock(&port->messageList.lock);
     executive->Signal(port->owner,1 << port->sigNum);
-    //debug_write_string(" !Done\n");
+
 }
 
 void ReplyMessage(message_t* message){
     
-    //debug_write_string("Exec: Reply Message - ");
     messagePort_t* port = message->replyPort;
     
     if(port == NULL){
-        //debug_write_string(" $Done\n");
         executive->Dealloc((node_t*)message);
         return;
     }
     
     PutMessage(port,message);
     
-   // debug_write_string("(");
-
-    //debug_write_string(port->node.name);
-    //Lock(&port->messageList.lock);
-
-    //AddTail(&port->messageList,(node_t*)message);
-    //FreeLock(&port->messageList.lock);
-    //executive->Signal(port->owner,1 << port->sigNum);
-    //debug_write_string(" !Done\n");
-    
-    //debug_write_string(")\n");
     
 }
 

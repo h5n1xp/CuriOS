@@ -28,20 +28,24 @@ uint8_t kickStartBootImage[] = {255,1,35,11,58,11,58,33,113,33,113,11,125,11,136
 
 // This lock lowers the resting task to match the locking task - which seems more stable at the moment
 inline void Lock(lock_t* lock){
-    
+
     //debug_write_string("\nWants Lock ");
     //debug_write_string(executive->thisTask->node.name);
 
     if(__atomic_test_and_set(&lock->isLocked, __ATOMIC_ACQUIRE)){
         
+        
+        //debug_write_string(executive->thisTask->node.name);
+        //debug_write_string(" Wants a locked Lock\n");
+        
         //to avoid a  priority inversion match the waiting task priority with the locking task.
         int64_t taskPri = executive->thisTask->node.priority;
         
-       /*
-        if(lock->lockingTask == executive->thisTask){
-            return;
-        }
-        */
+       
+        //if(lock->lockingTask == executive->thisTask){
+        //    return;
+        //}
+        
         
         if(lock->lockingTaskPri<taskPri){  //only match if the locking task is lower priority;
                 executive->thisTask->node.priority = lock->lockingTaskPri;
@@ -64,13 +68,13 @@ inline void Lock(lock_t* lock){
     lock->lockingTaskPri = executive->thisTask->node.priority;
     lock->lockingTask = executive->thisTask;
 }
- 
+
  inline void FreeLock(lock_t* lock){
  
  __atomic_clear(&lock->isLocked, __ATOMIC_RELEASE);
  
  }
- 
+
 
 /*
 // This lock raises the locking task to match the requesting task - seems to cause random lock ups...
@@ -165,6 +169,7 @@ node_t* KAlloc(size_t size){
             freeblock->prev = NULL;
             
             FreeLock(memLock);
+            executive->allocationTotal += size;             // Allocation Audit
             return freeblock;
         }
         
@@ -179,6 +184,8 @@ node_t* KAlloc(size_t size){
     //No block big enough
     if(freeblock->next == NULL){
         FreeLock(memLock);
+        debug_write_string("OUT OF MEMORY!");
+        asm volatile("int $15");                //<--- generate an exception
         return NULL;
     }
 
@@ -207,6 +214,7 @@ node_t* KAlloc(size_t size){
 
     
     FreeLock(memLock);
+    executive->allocationTotal += size;              // Allocation Audit
     return newBlock;
     
 }
@@ -275,6 +283,8 @@ void KDealloc(node_t* node){
     node->nodeType = NODE_MEMORY;
     node->priority = 0;
     node->flags = 0;
+    
+    executive->deallocationTotal += node->size;       // Allocation Audit
     
     Coalesce(node);
     
@@ -346,7 +356,7 @@ void FreeMem(void* pointer){
     }
     
     KDealloc(node);
-    
+    //debug_write_string("Free ");
 }
 
 library_t* OpenLibrary(char* name,uint64_t version){
@@ -538,6 +548,9 @@ void InitMemory(void* startAddress, uint64_t size){
     InitList(startAddress);
     executive_t* executive = startAddress;
     executive->memSize = size;
+    
+    executive->allocationTotal = 0;   // it might make sense to audit the total number of allocations vs deallocations at some point
+    executive->deallocationTotal = 0;
     
 
     node_t* freeblock = startAddress + sizeof(executive_t);

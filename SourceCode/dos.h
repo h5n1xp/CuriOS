@@ -77,6 +77,12 @@ typedef struct{
 
 
 typedef struct{
+    int type;
+    void* segment;
+    void* entry;
+} executable_t;
+
+typedef struct{
     library_t library;
     list_t dosList;
     void (*AddDosEntry)(dosEntry_t* entry);
@@ -87,7 +93,7 @@ typedef struct{
     
     directoryStruct_t* (*Examine)(file_t* dir);
     uint8_t* (*LoadFile)(file_t* file);
-    void (*LoadELF)(file_t* file);
+    executable_t (*LoadELF)(file_t* file);
 }dos_t;
 
 

@@ -54,7 +54,6 @@ struct window_t{
     bool noRise;             //no clicking to front
     bool isBusy;             //window busy, show busy pointer and should not receive events
     bitmap_t* bitmap;
-    int32_t autoRefeshCountdown;
     list_t gadgetList;
     
     lock_t clipRectsLock;   //always lock the cliprects list before using.
@@ -94,25 +93,44 @@ struct gadget_t{
 };
 
 
-#define WINDOW_EVENT_RESIZE     0x1
-#define WINDOW_EVENT_RESIZE_END 0x2
-#define WINDOW_EVENT_KEYDOWN    0x4
+#define WINDOW_EVENT_RESIZE                 0x1
+#define WINDOW_EVENT_RESIZE_END             0x2
+#define WINDOW_EVENT_KEYDOWN                0x4
+#define WINDOW_EVENT_CLOSE                  0x8
+#define WINDOW_EVENT_VSYNC                  0x10
+#define WINDOW_EVENT_REQUEST_OPEN_WINDOW    0x20  //when received by intuition, will enqueue the window, event data points to windowList
+#define WINDOW_EVENT_REQUEST_CLOSE_WINDOW   0x40  //when received by intuition, will remove the window
+#define WINDOW_EVENT_REQUEST_RESIZE_WINDOW  0x80  //when received by intuition, will resize the window
+#define WINDOW_EVENT_REQUEST_DRAW_TO_WINDOW 0x100 //When received by intutuion, will draw to window in intuition's context
 
-#define INTUITION_REQUEST_OPEN_WINDOW 0x1 //when received by intuition, will enqueue the window, event data points to windowList
 
+#define WINDOW_DRAW_COMMAND_PLOT        0x1
+#define WINDOW_DRAW_COMMAND_CLEAR       0x2
+#define WINDOW_DRAW_COMMAND_PUTCHAR     0x3
+#define WINDOW_DRAW_COMMAND_STRING      0x4
+#define WINDOW_DRAW_COMMAND_RECTANGLE   0x5
+#define WINDOW_DRAW_COMMAND_LINE        0x6
+#define WINDOW_DRAW_COMMAND_FILL        0x7
+#define WINDOW_DRAW_COMMAND_CIRCLE      0x8
+#define WINDOW_DRAW_COMMAND_TRIANGLE    0x9
+#define WINDOW_DRAW_COMMAND_VECTOR      0xA
 
+#define WINDOW_DRAW_FLAG_NOFILL         0x0
+#define WINDOW_DRAW_FLAG_FILL           0x1
+
+// the event stucture is overloaded at the moment for draw commands, I will define a special event structure for this in future.
 typedef struct{
     message_t   message;
     uint64_t    flags;
     window_t*   window;
-    gadget_t*   gadget;
-    void*       data;       // pointer to extra data
-    uint8_t     rawKey;
-    uint8_t     scancode;
-    int32_t     mouseX;
-    int32_t     mouseY;
-    int32_t     mouseXrel;
-    int32_t     mouseYrel;
+    gadget_t*   gadget;     // string pointer
+    void*       data;       // draw colour
+    uint8_t     rawKey;     // draw command
+    uint8_t     scancode;   // draw flag
+    int32_t     mouseX;     // x1
+    int32_t     mouseY;     // y1
+    int32_t     mouseXrel;  // x2   // r
+    int32_t     mouseYrel;  // y2
 }intuitionEvent_t;
 
 #define WINDOW_DRAGGABLE    0x1
@@ -122,7 +140,7 @@ typedef struct{
 #define WINDOW_TITLEBAR     0x10
 #define WINDOW_RESIZABLE    0x20
 #define WINDOW_BORDERLESS   0x40
-
+#define WINDOW_VSYNC        0x80    // With this flag the window will be sent VSYNC events
 
 
 
@@ -175,6 +193,7 @@ typedef struct{
     uint32_t systemCloseH;
     void (*Update)(void);
     window_t* (*OpenWindow)(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
+    void (*CloseWindow)(window_t* window);
     void (*SetTheme)(int value);
     void (*DrawDecoration)(window_t* window);
     void (*GimmeZeroZero)(window_t* window);
@@ -198,7 +217,7 @@ typedef struct{
 
     void (*DrawVectorImage)(window_t* window, uint32_t x, uint32_t y, uint8_t* data);
     
-    void (*RedrawWindow)(window_t* window);
+    void (*updateLayers)(window_t* window);
     gadget_t* (*CreateGadget)(window_t* window,uint32_t flags);
     window_t* (*Request)(char* title);
     

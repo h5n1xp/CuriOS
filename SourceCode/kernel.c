@@ -13,7 +13,7 @@
 #endif
 
 
-const char VERSTAG[] = "\0$VER: CuriOS 0.45a (08/07/2021) by Matt Parsons";
+const char VERSTAG[] = "\0$VER: CuriOS 0.46a (10/08/2021) by Matt Parsons";
 
 
 
@@ -77,9 +77,10 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     InitMultitasking();
     
     
+   // debug_write_string("Boot Task Currently Disabled in kernel.c");
     //Add the boot task, this task should be responsible for setting up the system.
-    //task_t* task = executive->AddTask(CliEntry,4096*2,0);  //double stack for Boot task... it has a lot to do...
-    //task->node.name = "BootShell";
+    task_t* task = executive->AddTask(CliEntry,4096*2,0);  //double stack for Boot task... it has a lot to do...
+    task->node.name = "BootShell";
     
     
     //Initilise the system timer to 1000Hz
