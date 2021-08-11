@@ -1,6 +1,5 @@
 //
 //  List.c
-//  GFXConvert
 //
 //  Created by Matt Parsons on 25/10/2020.
 //  Copyright © 2020 Matt Parsons. All rights reserved.

@@ -17,7 +17,7 @@
 #define THEME_MAC 2
 #define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-int guiTheme = THEME_NEW;
+int guiTheme = THEME_OLD;
 
 // time to rewrite the pointer code?
 //the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
@@ -710,20 +710,15 @@ void IntuitionUpdate(void){
         
         //Send VSync signal to each window which needs it
         if(window->flags & WINDOW_VSYNC){
-           // intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
-           // event->flags = WINDOW_EVENT_VSYNC;
-           // event->message.replyPort = NULL;
-           // executive->PutMessage(window->eventPort,(message_t*)event);
+            intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+            event->flags = WINDOW_EVENT_VSYNC;
+            event->message.replyPort = NULL;
+            executive->PutMessage(window->eventPort,(message_t*)event);
         }
         
         
         if(window->needsRedraw == true){
             RedrawBlitRects(window);
-            
-            //if(strcmp(window->node.name,"SysLog")){
-            //    debug_write_string(" Redrawing! "); debug_write_string(window->node.name);  debug_write_string("\n");
-            //}
-               
         }
         
         
@@ -1845,89 +1840,6 @@ void updateLayers(window_t* window){
 //
 //
 //*************************************************
-
-
-
-/*
-void ResizeWindow(window_t* window, uint32_t w, uint32_t h){
-    
-    
-    if(w < window->minWidth){
-        
-        mouseX = mouseXold;
-        
-        w = window->minWidth;
-        
-        if(window->w == window->minWidth && window->h == window->minHeight){
-
-            //return;
-        }
-        
-
- 
-    }
-    
-    
-    if(h < window->minHeight){
-        
-        mouseY = mouseYold;
-        
-        h = window->minHeight;
-        
-        if(window->w == window->minWidth && window->h == window->minHeight){
-            return;
-        }
-        
-
-
-    }
-    
-    
-    if(w > window->maxWidth){
-        w = window->maxWidth;
-    }
-    
-    if(h > window->maxHeight){
-        h = window->maxHeight;
-    }
-    
-
-    
-
-
-    bitmap_t* bm = graphics.NewBitmap(w, h);
-    bitmap_t* old = window->bitmap;
-    
-    if(bm==NULL){
-        return;
-    }
-
-    
-    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
-    event->message.replyPort = window->eventPort;
-    event->flags = WINDOW_EVENT_REQUEST_RESIZE_WINDOW;
-    event->window = window;
-    event->mouseX = w;
-    event->mouseY = h;
-    event->data = bm;
-    executive->PutMessage(intuition.intuiPort,(message_t*)event);
-    executive->Wait(1<< window->eventPort->sigNum);                 // intuiton will just set the signal, it won't send a message
-                                                                    // so no need to do anything else
-
-    
-    graphics.ClearBitmap(window->bitmap,window->backgroundColour); // This should use the proper window clear function....
-    graphics.FreeBitmap(old);
-    
-
-    
-    
-
-    intuition.DrawDecoration(window);
-    intuition.needsUpdate = true;
-    RedrawWindow(window);
-}
-*/
-
 
 
 void ResizeWindow(window_t* window, uint32_t w, uint32_t h){

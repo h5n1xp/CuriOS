@@ -185,6 +185,7 @@ node_t* KAlloc(size_t size){
     if(freeblock->next == NULL){
         FreeLock(memLock);
         debug_write_string("OUT OF MEMORY!");
+        executive->thisTask->guru = GURU_MEDITATION_OUT_OF_MEMORY;
         asm volatile("int $15");                //<--- generate an exception
         return NULL;
     }

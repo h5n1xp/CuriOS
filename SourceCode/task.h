@@ -11,6 +11,9 @@
 #include "stdheaders.h"
 #include "list.h"
 
+#define GURU_MEDITATION_NO_ERROR        0
+#define GURU_MEDITATION_OUT_OF_MEMORY   1
+
 
 #define TASK_SUSPENDED 0
 #define TASK_WAITING 1
@@ -23,6 +26,7 @@ typedef struct task_t task_t;
 struct task_t{
     node_t node;
     uint64_t state;     // i.e. TASK_READY
+    uint64_t guru;      // Kernel Error Code, i.e. 1. Out Of Memory
     task_t* parent;
     void* dosPort;      //Rendevous port for all DOS operations
     uint64_t dosError;  //Value set by the last DOS operation
@@ -39,7 +43,6 @@ struct task_t{
     void_ptr ssp_top;
 };
 
-void* TaskStartup(); //first call a task will make, returns pointer to the executive
 
 
 void InitMultitasking(void);

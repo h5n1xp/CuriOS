@@ -79,7 +79,9 @@ static void timer_callback(registers_t* regs){
         executive->SignalPrivate(regs, inputStruct.inputTask,2); //will cause an immediate reschedule
         //inputStruct.inputTask->signalReceived = 2; // will reschedule next quantum
     }else if(executive->elapsed<=0){
-        executive->ReschedulePrivate(&regs->link);
+        
+            executive->ReschedulePrivate(&regs->link);
+    
     }else if(!TestLock(&simpleTimer.lock)){
         
         node_t* node = simpleTimer.head;

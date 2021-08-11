@@ -89,8 +89,11 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     //Initilise the PS2 port, for mouse and keyboard
     InitPS2();
 
-    //Start the multitasking.
-    asm volatile("int $48"); //<--- Once multitasking is started, this thread will never be scheduled back in.
+    //Start the multitasking, but starting the interrupts, the timer will fire and immediately schedule in any ready tasks
+    asm volatile("sti"); //<--- Once multitasking is started, this thread can never be scheduled back in.
+    
+    
+    
     
     //This WILL never be executed
 	while(1){

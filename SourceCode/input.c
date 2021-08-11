@@ -64,48 +64,27 @@ void InputTaskEntry(){
             
             intuitionEvent_t* event = (intuitionEvent_t*) GetMessage(intuibase->intuiPort);
             
-            
-            //debug_write_hex(event->flags);debug_putchar(' ');intuibase->Update();
-            
-
-            
             while(event != NULL){
                 
                 if(event->flags & WINDOW_EVENT_REQUEST_OPEN_WINDOW){
-                    //debug_putchar('>');debug_putchar(' ');intuibase->Update();
 
-                    
                     executive->Enqueue( intuibase->windowList, (node_t*)event->window);
                     event->window->needsRedraw = true;
                     intuibase->updateLayers(event->window);
                     
-                    //debug_write_string("Intution Rquest received: ");
-                    //debug_write_string(list->node.name);debug_putchar(' ');
-                    //debug_write_string(event->window->node.name);debug_putchar('\n');
-                    
                 }
                 
                 if(event->flags & WINDOW_EVENT_REQUEST_CLOSE_WINDOW){
-                    //debug_putchar('>');debug_putchar(' ');intuibase->Update();
-                 
-                    
+
                     executive->Remove( intuibase->windowList, (node_t*)event->window);
                     window_t* newFront = (window_t*)intuibase->windowList->pred;
                     newFront->needsRedraw = true;
                     intuibase->updateLayers(NULL);
-                    
-                    //debug_write_string("Intution Rquest received: ");
-                    //debug_write_string(list->node.name);debug_putchar(' ');
-                    //debug_write_string(event->window->node.name);debug_putchar('\n');
-                
+            
                 }
                 
                 
                 if(event->flags & WINDOW_EVENT_REQUEST_RESIZE_WINDOW){
-
-                    //debug_write_string("Intution Rquest received: ");
-                    //debug_write_string(event->window->node.name);debug_putchar('\n');
-                    //intuibase->Update();
                     
                     event->window->w = event->mouseX;
                     event->window->h = event->mouseY;
@@ -113,10 +92,7 @@ void InputTaskEntry(){
                     event->window->bitmap = event->data;
                     
                     intuibase->updateLayers(event->window);
-                    
-
-        
-                    
+                
                     //It's a bit hacky to just signal without sending a message, but this is all internal to intution
                     executive->Signal(event->message.replyPort->owner,1 << event->message.replyPort->sigNum); //signal task resize is complete
                     event->message.replyPort = NULL;    // don't sent message back when replying
@@ -130,11 +106,11 @@ void InputTaskEntry(){
                     bitmap_t* bm    = event->window->bitmap;
                     uint32_t colour = (uint32_t)event->data;
                     uint8_t command = event->rawKey;
-                    uint8_t flags   = event->scancode;
+                   // uint8_t flags   = event->scancode;
                     uint32_t x1     = event->mouseX;
                     uint32_t y1     = event->mouseY;
-                    uint32_t x2     = event->mouseXrel;
-                    uint32_t y2     = event->mouseYrel;
+                    //uint32_t x2     = event->mouseXrel;
+                    //uint32_t y2     = event->mouseYrel;
                     
                     switch (command) {
                         case WINDOW_DRAW_COMMAND_PLOT:
@@ -193,23 +169,6 @@ void InputTaskEntry(){
                 processKeyboardBuffer(val);
             }
         
-          
-                node_t* node = intuition.windowList->pred;
-                do{
-                    window_t* window =(window_t*)node;
-                
-                    //Send VSync signal to each window which needs it
-                    if(window->flags & WINDOW_VSYNC){
-                        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
-                        event->flags = WINDOW_EVENT_VSYNC;
-                        event->message.replyPort = NULL;
-                        executive->PutMessage(window->eventPort,(message_t*)event);
-                    }
-                
-                    node = node->prev;
-                }while(node->prev !=NULL);
-            
-            
             //Generate Intuition Events
             intuibase->Update();
             

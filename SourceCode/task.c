@@ -28,14 +28,18 @@ int IdleTask(){
     uint32_t time = 0;
     
     while(1){
+        
        // debug_write_dec(time);
         for(int i=0;i<1000;++i){
             asm("hlt");
         }
         DefragMem();
         //debug_write_string("s");
-
         time +=1;
+        //graphics.DrawRect(&graphics.frameBuffer, 800,0,50,50,graphics.Colour(0,0,0,0xFF));
+
+        
+        
     }
     
     return 0;
@@ -43,6 +47,26 @@ int IdleTask(){
 
 
 
+void HiPriTask(){
+    
+    while(1){
+        
+
+        graphics.DrawRect(&graphics.frameBuffer, 800,0,50,50,graphics.Colour(0,0,0,0xFF));
+        WaitMS(500);
+        executive->Forbid();
+        graphics.DrawRect(&graphics.frameBuffer, 800,0,50,50,graphics.Colour(255,0,0,0xFF));
+        volatile int p = 0;
+        for(int i=0;i<100000000;i++){
+            p +=i;
+            p /= 37593;
+        }
+        executive->Permit();
+        
+    }
+    
+    
+}
 
 
 
@@ -61,7 +85,7 @@ void SetTaskPri(task_t* task,int32_t pri){
 task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
 
     
-    uint32_t supervisorStackSize = 4096; //16384;
+    uint32_t supervisorStackSize = 4096; 
     
     //minium stack is 4k
     if(stackSize<4096){
@@ -70,7 +94,15 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     
     //allocate enough memory for the stack and the task structure
     uint32_t size = supervisorStackSize + stackSize + sizeof(task_t);
-    task_t* task = (task_t*)executive->Alloc(size);
+    uint8_t* buffer = (uint8_t*)executive->Alloc(size);
+    
+    //Clear the buffer(starting at the bottom of the node
+    //for(int i=sizeof(node_t); i<size; ++i){
+    //    buffer[i] = 0;
+    //}
+    
+    task_t* task = (task_t*)buffer;
+    
     task->node.nodeType = NODE_TASK;
    
     //set up kernel stack
@@ -95,10 +127,8 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     frame->eip = (uint32_t)entry;
     frame->ds = 0x23;
     
-    //frame->esp = task->ssp + 0x24; //just for completeness
     task->ssp +=4;  // initial esp needs to point to 4 bytes higher in mem than the stack frame.
     frame->link = task->ssp;
-    frame->eax = (void_ptr)executive; //upon startup every task has a pointer to the kernel interface for now.
 
 
     task->parent = executive->thisTask;
@@ -107,6 +137,7 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     task->signalReceived = 0;
     task->forbidCount = 0;
     task->state = TASK_READY;
+    task->guru = GURU_MEDITATION_NO_ERROR;  // when something goes wrong an error code can be saved in the task structure.
     
     //set up message port
     
@@ -119,6 +150,7 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     
     return task;
 }
+
 
 void FreeSignal(uint32_t sigNum){
 
@@ -183,7 +215,7 @@ uint64_t Wait(uint64_t signal){               //wait for a signal
         //wait trap - saving a task state can only happen in an interrupt, so some of the code must be executed there.
         asm volatile("int $49");
     }
-    
+
     //returning from a signal
     
     uint64_t sig = task->signalReceived & task->signalWait; // which signals woke the task?
@@ -196,19 +228,20 @@ uint64_t Wait(uint64_t signal){               //wait for a signal
 bool schedulerLock = false;
 
 void ReschedulePrivate(void_ptr* link){
-
-    if(__atomic_test_and_set(&schedulerLock, __ATOMIC_ACQUIRE)){
-        return;
-    }
     
     executive->elapsed = executive->quantum;
+    
+
+    
     
     //check all waiting tasks to confirm if they have recieved a waking signal
     node_t* node = executive->taskWait.head;
     
     while(node->next != NULL){
-        
+
         task_t* check = (task_t*)node;
+        
+        //Here the reserved task signals will be check for things like ABORT, so we can kill a task etc
         
         if(check->signalReceived & check->signalWait){
             Remove(&executive->taskWait,(node_t*)check);
@@ -218,7 +251,6 @@ void ReschedulePrivate(void_ptr* link){
         
         node = node->next;
     }
-    
     
     
     if(executive->thisTask==NULL){
@@ -231,23 +263,29 @@ void ReschedulePrivate(void_ptr* link){
         __atomic_clear(&schedulerLock, __ATOMIC_RELEASE);
         return;
     }
-    
 
     
-    if(executive->taskReady.count > 0 && executive->thisTask->forbidCount < 1){ //
+   // graphics.RenderString(&graphics.frameBuffer,topazOld_font,800,80,"                ",graphics.Colour(255,0,0,255),graphics.Colour(0,0,0,255));
+   // graphics.RenderString(&graphics.frameBuffer,topazOld_font,800,80,"-> to reschedule",graphics.Colour(0,0,255,255),graphics.Colour(0,0,0,255));
+
+    
+    if(executive->taskReady.count > 0 && executive->thisTask->forbidCount < 1){
         
+
         //need to check head node priority here... and only continue if it is higher or equal
-        
         task_t* t = (task_t*)executive->taskReady.head;
         
         if(t->node.priority < executive->thisTask->node.priority){
-            
-            __atomic_clear(&schedulerLock, __ATOMIC_RELEASE);
             return;
         }
         
         task_t* nextTask = (task_t*)RemHead(&executive->taskReady);
         
+        //Ready list becomes corrupted do to this function being called twice in a row?!
+        if(nextTask->node.nodeType != NODE_TASK){
+            //graphics.RenderString(&graphics.frameBuffer,topazOld_font,600,60,"READY LIST CORRUPT!",graphics.Colour(255,255,255,255),graphics.Colour(65,65,65,255));
+            return;
+        }
         
         //save current task state... just the stack for now
         task_t* task = executive->thisTask;
@@ -256,6 +294,7 @@ void ReschedulePrivate(void_ptr* link){
         
         //retire current task
         Enqueue(&executive->taskReady,(node_t*)task);
+        //graphics.RenderString(&graphics.frameBuffer,topazOld_font,500,60,task->node.name,graphics.Colour(255,255,255,255),graphics.Colour(65,65,65,255));
         
         //context switch
         executive->thisTask = nextTask;
@@ -266,21 +305,24 @@ void ReschedulePrivate(void_ptr* link){
         
     }
 
-    __atomic_clear(&schedulerLock, __ATOMIC_RELEASE);
+
 }
 
 
 void Reschedule(){
-    asm volatile("int $48");
+    executive->elapsed = 0; //trigger a reschedule
+    //asm volatile("int $48");
 }
 
 
+//This function should probably be removed
 void SignalPrivate(registers_t* regs, task_t* task,uint64_t signals){   //signal a task
     
     task->signalReceived |= signals;    //save signals
-    ReschedulePrivate(&regs->link);
-
+    //ReschedulePrivate(&regs->link);
+    executive->elapsed = 0;
 }
+
 
 void Forbid(void){
         //asm volatile("cli");
@@ -292,7 +334,7 @@ void Permit(void){
        // asm volatile("sti");
 }
 
-static void signal_trap(registers_t* regs);
+static void signal_trap(registers_t* regs); // should probably be removed
 static void wait_trap(registers_t* regs);
 
 void InitMultitasking(){
@@ -308,7 +350,7 @@ void InitMultitasking(){
     //debug_write_hex((uint32_t)executive);debug_putchar('\n');
 
     
-    register_interrupt_handler(48, signal_trap); //  fire int48 for immediate reschedule
+    register_interrupt_handler(48, signal_trap); //  fire int48 for immediate reschedule... should probably be removed
     register_interrupt_handler(49, wait_trap);   //  int49 interrupt to wait a task.
     
     
@@ -325,6 +367,9 @@ void InitMultitasking(){
     
     inputStruct.inputTask = AddTask(InputTaskEntry,4096,20);
     
+    //To Test out task priorities
+    //task = AddTask(HiPriTask,4096,30);
+    //task->node.name = "HiPriTask";
     
     executive->thisTask          = NULL;
     
@@ -347,33 +392,30 @@ void InitMultitasking(){
 
 
 
-//Signal trap, this interupt causes an immediate reschedule
+//Signal trap, this interupt causes an immediate reschedule... this should probably be removed...
 static void signal_trap(registers_t* regs){
     ReschedulePrivate(&regs->link);
+    debug_write_string("Signal Trap!\n");
 }
 
 
 //wait trap, this interupt saves task state, and then reschedules
 static void wait_trap(registers_t* regs){
-    
-    if(__atomic_test_and_set(&schedulerLock, __ATOMIC_ACQUIRE)){
-        return;
-    }
-    
-    //add running task to waiting list
-    AddHead(&executive->taskWait,(node_t*)executive->thisTask);
-    
+    executive->elapsed = executive->quantum;
+
     //save current task state... just the stack for now
     task_t* task = executive->thisTask;
+    executive->thisTask = NULL;
+
+    
     task->ssp = regs->link;
     task->state = TASK_WAITING;
+    task->forbidCount = 0;     //Clear the Forbid count
     
-    //Clear the Forbid count
-    executive->thisTask->forbidCount = 0;
-    
-    __atomic_clear(&schedulerLock, __ATOMIC_RELEASE);
-    
-    executive->thisTask = NULL;
+    //add running task to waiting list
+    AddHead(&executive->taskWait,(node_t*)task);
+
+
     ReschedulePrivate(&regs->link);
     
 }

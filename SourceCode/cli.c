@@ -967,7 +967,7 @@ void processCommand(int commandLength){
         ConsoleWriteString(console,"   guru (Usage: guru) - purposely crashes this task.\n");
         ConsoleWriteString(console,"   help (Usage: help) - prints this help.\n");
         ConsoleWriteString(console,"   load (Usage: load filename) - loads an ELF executable into memory... and execute it (does not detach task from CLI!)\n");
-        ConsoleWriteString(console,"   listfree     - list free memory blocks)");
+        ConsoleWriteString(console,"   listfree     - list free memory blocks)\n");
         ConsoleWriteString(console,"   run (Usage: run filename) - loads an ELF executable into memory... and runs it (detaches task from CLI!)\n");
         return;
     }
@@ -1081,12 +1081,14 @@ void processCommand(int commandLength){
     }
   
     if(strcmp(commandBuffer,"b") == 0){
-        executive->AddTask(over,4096,0);
+        task_t* t = executive->AddTask(over,4096,0);
+        t->node.name = "Over!";
         return;
     }
  
     if(strcmp(commandBuffer,"c") == 0){
-        executive->AddTask(bouncy,4096,0);
+        task_t* t =  executive->AddTask(bouncy,4096,0);
+        t->node.name = "Bouncy!";
         return;
     }
     
