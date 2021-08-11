@@ -822,6 +822,11 @@ void processCommand(int commandLength){
     }
     
     
+    if(strcmp(commandBuffer,"debug") == 0){
+        executive->debug_show();
+        return;
+    }
+    
     //messy way to implment the dir command :-)
     if(strcmp(commandBuffer,"dir") == 0){
         //debug_write_string("Dir!\n");
@@ -929,11 +934,11 @@ void processCommand(int commandLength){
                 intuibase->SetBusy(console, true); //if the window can't process any events let the user know
                 for(uint64_t i=0; i < file->size; ++i){
                     ConsolePutChar(console,temp[i]);
-                    //debug_putchar(temp[i]);
-                    //for(int j=0; j<1000; ++j){
+                    
+                    for(int j=0; j<1000; ++j){
                         executive->Reschedule();    //slow the update rate down
-                    //}
-                   // ConsoleBackSpace(console);
+                    }
+                  
                 }
                 intuibase->SetBusy(console, false); //user can do things again.
                 
@@ -962,12 +967,13 @@ void processCommand(int commandLength){
     if(strcmp(commandBuffer,"help") == 0){
         ConsoleWriteString(console," Supported Commands:\n");
         ConsoleWriteString(console,"   cd   (Usage: cd path) - changes the current path.\n");
+        ConsoleWriteString(console,"   debug - show debugging console.\n");
         ConsoleWriteString(console,"   dir  (Usage: dir path) - lists files at the path.\n");
         ConsoleWriteString(console,"   echo (Usage: echo filename) - echos the contents of a file to the console.\n");
         ConsoleWriteString(console,"   guru (Usage: guru) - purposely crashes this task.\n");
         ConsoleWriteString(console,"   help (Usage: help) - prints this help.\n");
         ConsoleWriteString(console,"   load (Usage: load filename) - loads an ELF executable into memory... and execute it (does not detach task from CLI!)\n");
-        ConsoleWriteString(console,"   listfree     - list free memory blocks)\n");
+        ConsoleWriteString(console,"   listfree - list free memory blocks.\n");
         ConsoleWriteString(console,"   run (Usage: run filename) - loads an ELF executable into memory... and runs it (detaches task from CLI!)\n");
         return;
     }
@@ -1100,6 +1106,7 @@ void processCommand(int commandLength){
         ConsoleWriteString(console,"\n--------------------------------------\n");
         
         uint32_t total = 0;
+        uint32_t count = 0;
         
         while(node->next != NULL){
             ConsolePutChar(console,' ');
@@ -1107,12 +1114,15 @@ void processCommand(int commandLength){
             ConsoleWriteDec(console,node->size);ConsoleWriteString(console," bytes\n");
             
             total +=node->size;
-            
+            count += 1;
             node = node->next;
         }
-        ConsolePutChar(console,'\n');
-        ConsoleWriteString(console," Total Free: ");
-        ConsoleWriteDec(console,node->size);ConsoleWriteString(console," bytes\n");
+        ConsoleWriteString(console,"--------------------------------------\n");
+        ConsoleWriteString(console," Free Blocks: ");ConsoleWriteDec(console,count);ConsolePutChar(console,'\n');
+        ConsoleWriteString(console," Total Free: ");ConsoleWriteDec(console,total);ConsoleWriteString(console," bytes\n\n");
+        
+        ConsoleWriteString(console," Total Allocated: ");ConsoleWriteDec(console,executive->memSize - total);ConsoleWriteString(console," bytes\n\n");
+
         
         executive->Permit();
         
@@ -1195,7 +1205,10 @@ int CliEntry(void){
     
     intuibase = (intuition_t*) executive->OpenLibrary("intuition.library",0);
     
-    console = intuibase->OpenWindowPrivate(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight/2)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
+    //console = intuibase->OpenWindowPrivate(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight/2)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
+    
+    console = intuibase->OpenWindow(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
+    
     console->eventPort = executive->CreatePort("Event Port");
 
     ConsoleSize(console);

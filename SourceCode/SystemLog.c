@@ -25,6 +25,14 @@ char scrTit[] = "Debugging Console";
 
 intuition_t* intui;
 
+void debug_show(){
+    intui->SetVisible(sysLogWindow,true);
+}
+
+void debug_hide(){
+    intui->SetVisible(sysLogWindow,false);
+}
+
 void clear_cursor(void){
     
     if(sysLogWindow==NULL){return;}
@@ -44,6 +52,7 @@ void draw_cursor(uint32_t x,uint32_t y){
 }
 
 void debug_putchar_at(uint32_t x, uint32_t y, uint8_t c){
+    
     sysLogBuffer[(y*sysLogWidth) + x] = c;
     intui->PutChar(sysLogWindow, (x*8)+4, (y*16)+22, c, sysLogWindow->foregroundColour, sysLogWindow->backgroundColour);
     sysLogWindow->needsRedraw = true;
@@ -193,6 +202,8 @@ void InitSystemLog(uint32_t x, uint32_t y, uint32_t w, uint32_t h){
     
     sysLogWindow = NULL;
     sysLogWindow = intui->OpenWindowPrivate(NULL, x, y, w, h,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "SysLog");
+    
+    sysLogWindow->isVisible = false;
     
     intui->SetScreenTitle(sysLogWindow,scrTit);
     

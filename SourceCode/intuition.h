@@ -50,6 +50,7 @@ struct window_t{
     uint64_t flags;
     messagePort_t* eventPort;
     bool focused;
+    bool isVisible;
     bool needsRedraw;
     bool noRise;             //no clicking to front
     bool isBusy;             //window busy, show busy pointer and should not receive events
@@ -102,7 +103,7 @@ struct gadget_t{
 #define WINDOW_EVENT_REQUEST_CLOSE_WINDOW   0x40  //when received by intuition, will remove the window
 #define WINDOW_EVENT_REQUEST_RESIZE_WINDOW  0x80  //when received by intuition, will resize the window
 #define WINDOW_EVENT_REQUEST_DRAW_TO_WINDOW 0x100 //When received by intutuion, will draw to window in intuition's context
-
+#define WINDOW_EVENT_REQUEST_CHANGE_VISIBILITY 0x200
 
 #define WINDOW_DRAW_COMMAND_PLOT        0x1
 #define WINDOW_DRAW_COMMAND_CLEAR       0x2
@@ -205,6 +206,7 @@ typedef struct{
     void (*PriorityOrderPrivate)(window_t* window);
     void (*Focus)(window_t* window);
     void (*SetBusy)(window_t* window, bool state);
+    void (*SetVisible)(window_t* window, bool state);
     void (*Plot)(window_t* window,uint32_t x, uint32_t y, uint32_t colour);
     void (*ClearWindow)(window_t*);
     void (*PutChar)(window_t*, uint32_t x, uint32_t y, uint8_t character, uint32_t fColour, uint32_t bColour);

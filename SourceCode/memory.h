@@ -29,6 +29,8 @@ typedef struct{
     uint64_t deallocationTotal;
     
     //Debugging output functions
+    void (*debug_show)(void);
+    void (*debug_hide)(void);
     void (*debug_write_string)(char* str);
     void (*debug_write_hex)(uint32_t n);
     void (*debug_write_dec)(uint32_t n);

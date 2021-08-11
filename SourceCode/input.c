@@ -96,7 +96,19 @@ void InputTaskEntry(){
                     //It's a bit hacky to just signal without sending a message, but this is all internal to intution
                     executive->Signal(event->message.replyPort->owner,1 << event->message.replyPort->sigNum); //signal task resize is complete
                     event->message.replyPort = NULL;    // don't sent message back when replying
+                }
+                
+                
+                
+                if(event->flags & WINDOW_EVENT_REQUEST_CHANGE_VISIBILITY){
+                 
+                    if(event->rawKey==1){
+                        event->window->isVisible = true;
+                    }else{
+                        event->window->isVisible = false;;
+                    }
                     
+                    intuibase->updateLayers(event->window);
                 }
                 
                 

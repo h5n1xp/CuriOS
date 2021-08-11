@@ -52,17 +52,11 @@ void HiPriTask(){
     while(1){
         
 
-        graphics.DrawRect(&graphics.frameBuffer, 800,0,50,50,graphics.Colour(0,0,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-10,2,8,8,graphics.Colour(0,0,0,0xFF));
         WaitMS(500);
-        executive->Forbid();
-        graphics.DrawRect(&graphics.frameBuffer, 800,0,50,50,graphics.Colour(255,0,0,0xFF));
-        volatile int p = 0;
-        for(int i=0;i<100000000;i++){
-            p +=i;
-            p /= 37593;
-        }
-        executive->Permit();
-        
+
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-10,2,8,8,graphics.Colour(255,0,0,0xFF));
+        WaitMS(500);
     }
     
     
@@ -368,8 +362,8 @@ void InitMultitasking(){
     inputStruct.inputTask = AddTask(InputTaskEntry,4096,20);
     
     //To Test out task priorities
-    //task = AddTask(HiPriTask,4096,30);
-    //task->node.name = "HiPriTask";
+    task = AddTask(HiPriTask,4096,30);
+    task->node.name = "HiPriTask";
     
     executive->thisTask          = NULL;
     

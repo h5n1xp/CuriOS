@@ -260,6 +260,11 @@ void updateMouse(){
     while(node->prev != NULL){
         window_t* window = (window_t*)node;
         
+        //Don't check for non visible windows
+        if(window->isVisible == false){
+            node = node->prev;
+            continue;
+        }
         
         if(mx >= window->x && mx <= (window->x + window->w) && my >= window->y && my <= (window->y + window->h) ){
             
@@ -716,6 +721,11 @@ void IntuitionUpdate(void){
             executive->PutMessage(window->eventPort,(message_t*)event);
         }
         
+        //skip drawing window if not visible
+        if(window->isVisible == false){
+            node = node->prev;
+            continue;
+        }
         
         if(window->needsRedraw == true){
             RedrawBlitRects(window);
@@ -1603,6 +1613,12 @@ window->clipRects = 1;
              
              window_t* above = (window_t*)node;
              
+             //Don't process non visible windows
+             if(above->isVisible == false){
+                 node = node->prev;
+                 continue;
+             }
+             
              uint32_t winX1 = above->x;
              uint32_t winY1 = above->y;
              uint32_t winX2 = above->x + above->w;
@@ -2045,7 +2061,27 @@ void SetBusy(window_t* window,bool state){
     inputStruct.rawMouse[3] = 1; // tell intuition to update mouse image
 }
 
-
+void SetVisible(window_t* window, bool state){
+    
+    if(window->isVisible == state){
+        return;
+    }
+    
+    //Change window visibility
+    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+    event->flags = WINDOW_EVENT_REQUEST_CHANGE_VISIBILITY;
+    event->message.replyPort = NULL;
+    
+    if(state){
+        event->rawKey= 1;
+    }else{
+        event->rawKey = 0;
+    }
+    
+    event->window = window;
+    executive->PutMessage(intuition.intuiPort,(message_t*)event);
+    
+}
 
 
 //OpenWindowPrivate only works before multitasking is started
@@ -2070,6 +2106,7 @@ window_t* OpenWindowPrivate(window_t* parent,uint32_t x, uint32_t y, uint32_t w,
     window->innerW  = w;
     window->innerH  = h;
     window->focused = false;
+    window->isVisible = true;
     window->needsRedraw = true;
     window->isBusy = false;
     
@@ -2218,6 +2255,7 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
     window->innerW  = w;
     window->innerH  = h;
     window->focused = false;
+    window->isVisible = true;
     window->needsRedraw = true;
     window->isBusy = false;
     
@@ -2809,7 +2847,8 @@ void LoadIntuitionLibrary(){
     intuition.Request           = Request;
     intuition.CreateGadget      = CreateGadget;
     intuition.SetBusy           = SetBusy;
-
+    intuition.SetVisible        = SetVisible;
+    
     SetTheme(guiTheme);
   
 }

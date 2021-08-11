@@ -23,7 +23,7 @@
 //.set height, 900    //768 //800 /720 /480 /900
 
 //.set width, 1920    //1024 //1280 /1280 /640 /1440
-//.set height, 1200    //768 //800 /720 /480 /900
+//.set height, 1080    //768 //800 /720 /480 /900
 
 //.set width, 3840    NOT SUPPORTED BY VBE
 //.set height, 2160   NOT SUPPORTED BY VBE

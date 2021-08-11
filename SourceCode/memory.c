@@ -565,6 +565,8 @@ void InitMemory(void* startAddress, uint64_t size){
     executive->elapsed = executive->quantum;
     
     //Debugging output functions
+    executive->debug_show           = debug_show;
+    executive->debug_hide           = debug_hide;
     executive->debug_write_string   = debug_write_string;
     executive->debug_write_hex      = debug_write_hex;
     executive->debug_write_dec      = debug_write_dec;

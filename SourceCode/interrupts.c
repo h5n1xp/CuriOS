@@ -58,6 +58,12 @@ void isr_handler(registers_t regs){
         executive->thisTask = NULL;
         executive->ReschedulePrivate(&regs.link);   //schedule in next task
              
+        //Task didn't crash it ended
+        if(task->state == TASK_ENDED){
+            
+            //need to clean up the ended tasks from the suspended list somehow.
+            return;
+        }
         
         
         //If the window server has crashed we need a non GUI Guru
@@ -73,18 +79,8 @@ void isr_handler(registers_t regs){
             graphics.RenderString(&graphics.frameBuffer,intuition.defaultFont,300,40,task->node.name,graphics.Colour(255,0,0,0xFF),graphics.Colour(0,0,0,0xFF));
         //}
         
-        
-        
-        
-        //Task didn't crash it ended
-        if(task->state == TASK_ENDED){
-            
-            //need to clean up the ended tasks from the suspended list somehow.
-            return;
-        }
-        
                            
-        //The task defineitly crashed :(
+        //The task definitly crashed :(
         task->state = TASK_SUSPENDED;
                            
         debug_write_string("\nGuru Meditation! ");
@@ -93,7 +89,6 @@ void isr_handler(registers_t regs){
 
         debug_write_string(task->node.name);
         
-        //terminal_write_hex((uint32_t)kernel->runningTask);
         debug_write_string(" - ");
         debug_write_string(trap_strs[int_no]);
         debug_write_string(" \n");
