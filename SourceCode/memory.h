@@ -23,7 +23,7 @@ typedef struct{
     uint64_t memSize;
     uint64_t ticks;
     uint64_t quantum;
-    int64_t elapsed;
+    volatile int64_t elapsed;
     
     uint64_t allocationTotal;   // it might make sense to audit the total number of allocations vs deallocations at some point
     uint64_t deallocationTotal;

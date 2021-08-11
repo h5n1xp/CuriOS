@@ -98,8 +98,6 @@ void InputTaskEntry(){
                     event->message.replyPort = NULL;    // don't sent message back when replying
                 }
                 
-                
-                
                 if(event->flags & WINDOW_EVENT_REQUEST_CHANGE_VISIBILITY){
                  
                     if(event->rawKey==1){
@@ -264,7 +262,7 @@ void processKeyboardBuffer(uint8_t val){
                 character = scancode[val+shift];
                 
                
-                if(inputStruct.focused->eventPort != NULL){
+                if(inputStruct.focused->eventPort != NULL && (inputStruct.focused->flags & WINDOW_KEYBOARD) ){
                     
                     intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
                     event->message.replyPort = NULL;

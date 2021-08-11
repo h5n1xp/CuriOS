@@ -1207,7 +1207,7 @@ int CliEntry(void){
     
     //console = intuibase->OpenWindowPrivate(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight/2)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
     
-    console = intuibase->OpenWindow(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
+    console = intuibase->OpenWindow(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE | WINDOW_KEYBOARD, "BootShell");
     
     console->eventPort = executive->CreatePort("Event Port");
 

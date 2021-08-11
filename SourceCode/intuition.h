@@ -93,7 +93,7 @@ struct gadget_t{
     void (*Draw)(gadget_t*);  // if a System Type, then this is the code that draws it
 };
 
-
+//These don't need to be powers of two, I should change them
 #define WINDOW_EVENT_RESIZE                 0x1
 #define WINDOW_EVENT_RESIZE_END             0x2
 #define WINDOW_EVENT_KEYDOWN                0x4
@@ -142,6 +142,7 @@ typedef struct{
 #define WINDOW_RESIZABLE    0x20
 #define WINDOW_BORDERLESS   0x40
 #define WINDOW_VSYNC        0x80    // With this flag the window will be sent VSYNC events
+#define WINDOW_KEYBOARD     0x100   // Allow the window to accept Keyboard events
 
 
 

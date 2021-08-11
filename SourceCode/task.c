@@ -55,7 +55,7 @@ void HiPriTask(){
         graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-10,2,8,8,graphics.Colour(0,0,0,0xFF));
         WaitMS(500);
 
-        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-10,2,8,8,graphics.Colour(255,0,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-10,2,8,8,graphics.Colour(255,127,0,0xFF));
         WaitMS(500);
     }
     
@@ -201,6 +201,8 @@ void Signal(task_t* task,uint64_t signals){   //signal a task
 
 uint64_t Wait(uint64_t signal){               //wait for a signal
  
+    executive->elapsed = 200;    //force the rescheduler to not reschedule but putting some stupid high value
+    
     task_t* task = executive->thisTask;
     task->signalWait |= signal;
     
@@ -219,14 +221,9 @@ uint64_t Wait(uint64_t signal){               //wait for a signal
     return sig;
 }
 
-bool schedulerLock = false;
+
 
 void ReschedulePrivate(void_ptr* link){
-    
-    executive->elapsed = executive->quantum;
-    
-
-    
     
     //check all waiting tasks to confirm if they have recieved a waking signal
     node_t* node = executive->taskWait.head;
@@ -235,15 +232,18 @@ void ReschedulePrivate(void_ptr* link){
 
         task_t* check = (task_t*)node;
         
-        //Here the reserved task signals will be check for things like ABORT, so we can kill a task etc
+        //Here the reserved task signals will be checked for things like ABORT, so we can kill a task etc
         
         if(check->signalReceived & check->signalWait){
+            
+            node = node->next;
+            
             Remove(&executive->taskWait,(node_t*)check);
             Enqueue(&executive->taskReady,(node_t*)check);
             check->state = TASK_READY;
+        }else{
+            node = node->next;
         }
-        
-        node = node->next;
     }
     
     
@@ -254,7 +254,7 @@ void ReschedulePrivate(void_ptr* link){
         *link = firstTask->ssp;
         tss_entry.esp0 = firstTask->ssp_top;
 
-        __atomic_clear(&schedulerLock, __ATOMIC_RELEASE);
+        executive->elapsed = executive->quantum;
         return;
     }
 
@@ -270,6 +270,7 @@ void ReschedulePrivate(void_ptr* link){
         task_t* t = (task_t*)executive->taskReady.head;
         
         if(t->node.priority < executive->thisTask->node.priority){
+            executive->elapsed = executive->quantum;
             return;
         }
         
@@ -278,6 +279,8 @@ void ReschedulePrivate(void_ptr* link){
         //Ready list becomes corrupted do to this function being called twice in a row?!
         if(nextTask->node.nodeType != NODE_TASK){
             //graphics.RenderString(&graphics.frameBuffer,topazOld_font,600,60,"READY LIST CORRUPT!",graphics.Colour(255,255,255,255),graphics.Colour(65,65,65,255));
+            debug_write_string("Ready list corrupt! ->");
+            executive->elapsed = executive->quantum;
             return;
         }
         
@@ -298,7 +301,8 @@ void ReschedulePrivate(void_ptr* link){
         *link = nextTask->ssp;
         
     }
-
+    
+    executive->elapsed = executive->quantum;
 
 }
 
@@ -395,7 +399,7 @@ static void signal_trap(registers_t* regs){
 
 //wait trap, this interupt saves task state, and then reschedules
 static void wait_trap(registers_t* regs){
-    executive->elapsed = executive->quantum;
+
 
     //save current task state... just the stack for now
     task_t* task = executive->thisTask;
