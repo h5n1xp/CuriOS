@@ -1,10 +1,10 @@
 # Read Me
 
-The Zip files here are the bootable raw hard disk image (and a VDI for VirtualBox) of the August 9th, 2021 Build of CuriOS...
+The Zip files here are the bootable raw hard disk image (and a VDI for VirtualBox) of the August 11th, 2021 Build of CuriOS...
 
 The command shell currently supports a few commands, type help for a full list.
 
-One example program is included, called prog.elf
+Two example programs are included on the boot disk, called prog.elf and draw.elf
 
 The graphical user interface can be "themed", in the style of one of three built in themes, which can be selected at compile time to suit the user's preference. To set the theme, change the guiTheme variable in the intuition.c file to either THEME_OLD, THEME_NEW, or THEME_MAC.
 
@@ -18,9 +18,9 @@ AmigaOS3.0 Theme:
 ![Amiga3](https://github.com/h5n1xp/CuriOS/blob/main/ScreenShot2.png)
 
 Things to note:
-1. Many components (libraries, devices, and tasks), notably the older ones, are currently in a "primeval" state, that is to say they do not follow the normal initialisation process. Since they are compiled together a single blob, they have access to name-spaces that they will normally access via the executive controlled interface, also they must be initialised either by the startup "kernel thread", or the boot task. This would normally be handled by the executive upon loading from disk.
+1. Some components (libraries, devices, and tasks), notably the older ones, are currently in a "primeval" state, that is to say they do not follow the normal initialisation process. Since they are compiled together a single blob, they have access to name-spaces that they will normally have to access via the executive controlled interface, also they must be initialised either by the startup "kernel thread", or the boot task. This would normally be handled by the executive upon loading from disk.
 
-2. There is rudimentray file system support for FAT32 drives. There is a working ata device driver (read only), so you can read raw data blocks from a hard drive. There is a FAT32 filesystem handler (a "handler" is a special device/library which knows how to translate the block data returned from a device into stream data for DOS, all file systems are implmented this way, a device can be its own handler usually when the device doesn't support file systems) which sits on top of the ata device. When the filesystem is more mature, all future components will be loaded from disk and will be initialised and accessed via the proper formal executive interface. The code currently in cli.c is just temporary while I'm building the file system and DOS code. This will eventually become the boot task whick will take over most of the role that kernel.c currently performs. I will then write a proper command shell, which will then be spawned by the boot task.
+2. There is rudimentray file system support for FAT32 drives. There is a working ata device driver (read only), so you can read raw data blocks from a hard drive. There is a FAT32 filesystem handler (a "handler" is a special device/library which knows how to translate the block data returned from a device into stream data for DOS, all file systems are implmented this way, a device can be its own handler usually when the device doesn't support file systems) which sits on top of the ata device. When the filesystem is more mature, all future components will be loaded from disk and will be initialised and accessed via the proper formal executive interface. The code currently in cli.c is just temporary while I'm building the file system and DOS code. This will eventually become the boot task whick will take over most of the role that kernel.c currently performs. I will then write a proper command shell, which will then be spawned by the boot task. The CLI can load ELF executable files and execute them.
 
 3. The is no proper build process, this is the 8th step (code rewrite) and I will formalise the build process with a hierarchical file structure and Make files once step 8 reaches maturity. At the moment the whole thing is built using shell scripts.
 
