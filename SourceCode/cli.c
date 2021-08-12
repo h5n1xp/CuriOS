@@ -377,6 +377,24 @@ int outputee(){
 */
 
 
+void clock(){
+    
+    intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
+    
+    window_t* clockWin = intuibase->OpenWindow(NULL, 20, 20, 200, 250,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_CLOSE_GADGET,"Clock");
+    
+    intuibase->DrawCircle(clockWin,100,125,90,intuition.black,false);
+    intuibase->DrawCircle(clockWin,100,125,89,intuition.black,false);
+    intuibase->DrawCircle(clockWin,100,125,88,intuition.black,false);
+    intuibase->FloodFill(clockWin,100,125,intuition.white);
+    
+    
+    while(1){
+        WaitMS(100);
+    }
+    
+}
+
 int over(){
     
     int ballX = 40;
@@ -588,7 +606,7 @@ void bouncy(){
                             
 
                     intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
-                   // intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
+                    intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
                     
                     //debug_write_string("Msg! ->");
                     
@@ -1081,8 +1099,8 @@ void processCommand(int commandLength){
     }
     
     if(strcmp(commandBuffer,"a") == 0){
-        intuibase->OpenWindow(NULL, 0, 0, 200, 120,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "Test!");
-        ConsoleWriteString(console,"New Window\n");
+        task_t* t = executive->AddTask(clock,4096,0);
+        t->node.name = "clock";
         return;
     }
   
@@ -1100,14 +1118,16 @@ void processCommand(int commandLength){
     
     if(strcmp(commandBuffer,"listfree") == 0){
         
-        executive->Forbid();
+
         
-        node_t* node = executive->freeList.head;
+
         ConsoleWriteString(console,"\n--------------------------------------\n");
         
         uint32_t total = 0;
         uint32_t count = 0;
         
+        executive->Forbid();
+        node_t* node = executive->freeList.head;
         while(node->next != NULL){
             ConsolePutChar(console,' ');
             ConsoleWriteHex(console,(uint32_t)node);ConsoleWriteString(console,": ");
@@ -1117,6 +1137,8 @@ void processCommand(int commandLength){
             count += 1;
             node = node->next;
         }
+        executive->Permit();
+        
         ConsoleWriteString(console,"--------------------------------------\n");
         ConsoleWriteString(console," Free Blocks: ");ConsoleWriteDec(console,count);ConsolePutChar(console,'\n');
         ConsoleWriteString(console," Total Free: ");ConsoleWriteDec(console,total);ConsoleWriteString(console," bytes\n\n");
@@ -1124,7 +1146,7 @@ void processCommand(int commandLength){
         ConsoleWriteString(console," Total Allocated: ");ConsoleWriteDec(console,executive->memSize - total);ConsoleWriteString(console," bytes\n\n");
 
         
-        executive->Permit();
+
         
         
         return;
@@ -1172,6 +1194,7 @@ void processCommand(int commandLength){
 
 int CliEntry(void){
     
+    executive->thisTask->parent = NULL; //CLI should have no parent task, upon execution a task should check and see if it has a parent, if it doesn't then then that means it hasn't been detached from CLI and may use the CLI for it's I/O. If a task does have a parent then it must set up it's own I/O.
     
     //The Boot Task should be responsible for loading the initial Libraries and devices into memory.
     

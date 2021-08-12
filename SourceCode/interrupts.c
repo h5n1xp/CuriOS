@@ -53,6 +53,7 @@ void isr_handler(registers_t regs){
     uint8_t int_no = regs.int_no & 0xFF;
 
     if(int_no<20){
+        executive->elapsed = 200;   //Set to some stupidly high value to inhibit rescheduilng until the rescheduler is called in this interrupt
         task_t* task = executive->thisTask;
         executive->AddHead(&executive->taskSuspended,(node_t*)task); // move to the suspended list
         executive->thisTask = NULL;

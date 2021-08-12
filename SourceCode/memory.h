@@ -59,10 +59,14 @@ typedef struct{
     node_t* (*RemHead)(list_t* list);
     node_t* (*RemTail)(list_t* list);
     
+    //Libraries
     void (*AddLibrary)(library_t* library);
     library_t* (*OpenLibrary)(char* name, uint64_t version);
     
+    //Tasks
     task_t* (*AddTask)(void* entry,uint32_t stackSize, int32_t priority);
+    void (*RemTask)(task_t* task);
+    task_t* (*FindTask)(char* name);
     uint64_t (*Wait)(uint64_t signal);
     void (*Signal)(task_t* task, uint64_t signals);
     int32_t (*AllocSignal)(int32_t sigNum);
@@ -70,10 +74,10 @@ typedef struct{
     void (*SetTaskPri)(task_t* task, int32_t priority);
     void (*Reschedule)(void);
     void (*ReschedulePrivate)(void_ptr* link);
-    void (*SignalPrivate)(registers_t* regs, task_t* task,uint64_t signals);
     void (*Forbid)(void);
     void (*Permit)(void);
     
+    //Message Ports
     messagePort_t* (*CreatePort)(char* name);
     void (*DeletePort)(messagePort_t* port);
     messagePort_t* (*FindPort)(char* name);
@@ -98,6 +102,7 @@ typedef struct{
     //Interrupts
     void (*SetIntVector)(uint8_t interruptNumber, isr_t handler); //set the interrupt handler callback code.
     
+    task_t* kernelTask;
     task_t* thisTask;
     list_t deviceList;
     list_t libraryList;

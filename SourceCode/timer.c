@@ -46,43 +46,19 @@ static void timer_callback(registers_t* regs){
     
 
     
-    /* ******************
-       if(!TestLock(&simpleTimerLock)){
-           for(int i=0; i<64;++i){
-               //Process simple timer
-               if(simpleTimers[i].task != NULL){
-                
-                   if(executive->ticks >= simpleTimers[i].timeOut){
-            
-                  
-                       simpleTimers[i].timeOut += 0xFFFFF;
-                       task_t* task = simpleTimers[i].task;
-                       uint64_t sig = 1 << simpleTimers[i].sigNum;
-        
-                       //signal to run but do NOT reschedule.
-                       task->signalReceived |= sig;
-                   }
-                
-               }
-    
-        
-           }
-           
-       }
-    */
-    
-    
-    
     
     if(fakeVBLCountDown == 0){
         fakeVBLCountDown = 15;  //approximately 60Hz which would be 16.67ms
-        executive->SignalPrivate(regs, inputStruct.inputTask,2); //will cause an immediate reschedule
-        //inputStruct.inputTask->signalReceived = 2; // will reschedule next quantum
-    }else if(executive->elapsed<=0){
+        executive->Signal(inputStruct.inputTask,2); //will cause an immediate reschedule
+    }
+    
+    if(executive->elapsed<=0){
         
             executive->ReschedulePrivate(&regs->link);
     
-    }else if(!TestLock(&simpleTimer.lock)){
+    }
+    
+    if(!TestLock(&simpleTimer.lock)){
         
         node_t* node = simpleTimer.head;
         
@@ -94,7 +70,8 @@ static void timer_callback(registers_t* regs){
         
             if(t->timeOut <= executive->ticks){
                 t->timeOut += 0xFFFFF;
-                t->task->signalReceived |= (1 << 4);    // will wake the task, the next OS Quantum.
+                //t->task->signalReceived |= (1 << 4);    // will wake the task, the next OS Quantum.
+                executive->Signal(t->task,(1 << 4)); //will cause an immediate reschedule
             }
         
             node = node->next;
@@ -132,12 +109,6 @@ void InitTimer(uint32_t frequency){
 
 void WaitMS(uint64_t time){
     
-    if(TestLock(&simpleTimer.lock)){
-      //  return;
-    }
-    
-    
-    //return;
     simpleTimerNode_t* node = (simpleTimerNode_t*)executive->Alloc(sizeof(simpleTimerNode_t));
     if(node == NULL){
         return;
@@ -159,29 +130,4 @@ void WaitMS(uint64_t time){
     
     return;
     
-    /*
-    Lock(&simpleTimerLock);
-
-    for(int i =0;i<64;++i){
-        
-        if(simpleTimers[i].task == NULL){
-            
-            simpleTimers[i].task  = executive->thisTask;
-            simpleTimers[i].sigNum = 4;//executive->AllocSignal(-1);
-            simpleTimers[i].timeOut = executive->ticks + time;
-            
-            FreeLock(&simpleTimerLock);
-            executive->Wait(1 << simpleTimers[i].sigNum);
-            
-            Lock(&simpleTimerLock);
-            simpleTimers[i].task = NULL;    //timer fired,so invalidate it;
-            FreeLock(&simpleTimerLock);
-            
-            return;
-            
-        }
-        
-    }
-    FreeLock(&simpleTimerLock);
-     */
 }

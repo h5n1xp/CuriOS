@@ -17,7 +17,7 @@
 #define THEME_MAC 2
 #define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-int guiTheme = THEME_OLD;
+int guiTheme = THEME_NEW;
 
 // time to rewrite the pointer code?
 //the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
@@ -714,7 +714,7 @@ void IntuitionUpdate(void){
         window_t* window =(window_t*)node;
         
         //Send VSync signal to each window which needs it
-        if(window->flags & WINDOW_VSYNC){
+        if((window->flags & WINDOW_VSYNC) && (window->eventPort != NULL) ){
             intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
             event->flags = WINDOW_EVENT_VSYNC;
             event->message.replyPort = NULL;
@@ -1903,13 +1903,14 @@ void ResizeWindow(window_t* window, uint32_t w, uint32_t h){
     
     
     bitmap_t* bm = graphics.NewBitmap(w, h);
-    bitmap_t* old = window->bitmap;
     
     if(bm==NULL){
         return;
     }
-
     
+    bitmap_t* old = window->bitmap;
+    
+
     intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
     event->message.replyPort = window->eventPort;
     event->flags = WINDOW_EVENT_REQUEST_RESIZE_WINDOW;
@@ -1922,9 +1923,9 @@ void ResizeWindow(window_t* window, uint32_t w, uint32_t h){
     executive->Wait(1<< window->eventPort->sigNum);                 // intuiton will just set the signal, it won't send a message
                                                                     // so no need to do anything else
 
-    
-    graphics.ClearBitmap(event->window->bitmap,event->window->backgroundColour); // This should use the proper window clear function....
-    intuition.DrawDecoration(event->window);
+    //Currently these are executed by the window server... not ideal
+    //graphics.ClearBitmap(window->bitmap,window->backgroundColour); // This should use the proper window clear function....
+    //intuition.DrawDecoration(window);
     
     window->needsRedraw = true;
     graphics.FreeBitmap(old);

@@ -34,6 +34,14 @@ const char VERSTAG[] = "\0$VER: CuriOS 0.46a (10/08/2021) by Matt Parsons";
 #include "cli.h"    //This is, for now, the boot task...
 
 
+
+void KernelTaskEntry(){
+    
+    
+    
+    
+}
+
 void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     
     // Initialise the descriptor tables, and prepare the interrupts.

@@ -543,12 +543,17 @@ void DrawCircle(bitmap_t* bm, uint32_t x0, uint32_t y0, uint32_t r, uint32_t rgb
 
 
 void FloodFill(bitmap_t* bm, uint32_t x, uint32_t y, uint32_t rgb){
-    
+        
     // Get Target Colour
     uint32_t targetColour = get_pixel32(bm,x,y);
 
     //Point2D map[bm->width*bm->height];
-    Point2D* map = (Point2D*)executive->AllocMem((bm->width*bm->height)*4,0);
+    Point2D* map = (Point2D*)executive->AllocMem((bm->width*bm->height)*sizeof(Point2D),0);
+    
+    if(map==NULL){
+        return;
+    }
+    
     int mapIndex = 0;
     int mapPointer = -1;
     

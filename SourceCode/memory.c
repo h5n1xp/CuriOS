@@ -141,12 +141,14 @@ inline bool TestLock(lock_t* lock){
 
 node_t* KAlloc(size_t size){
     
-    lock_t* memLock = &executive->freeList.lock;
+
     
+    lock_t* memLock = &executive->freeList.lock;
     Lock(memLock);
+    executive->Forbid();// We shouldn't need these... my allocation method needs to be better
     
     //add on memory header size;
-    //size +=sizeof(node_t);        // removed since alloc should only be use to allocate OS objects
+    //size +=sizeof(node_t);        // removed since alloc should only be use to allocate OS objects which will have a node_t header
     
     //need to align on 8 byte boundary
     size += 7;
@@ -170,6 +172,7 @@ node_t* KAlloc(size_t size){
             
             FreeLock(memLock);
             executive->allocationTotal += size;             // Allocation Audit
+            executive->Permit();// We shouldn't need these... my allocation method needs to be better
             return freeblock;
         }
         
@@ -184,6 +187,7 @@ node_t* KAlloc(size_t size){
     //No block big enough
     if(freeblock->next == NULL){
         FreeLock(memLock);
+        executive->Permit();// We shouldn't need these... my allocation method needs to be better
         debug_write_string("OUT OF MEMORY!");
         executive->thisTask->guru = GURU_MEDITATION_OUT_OF_MEMORY;
         asm volatile("int $15");                //<--- generate an exception
@@ -215,8 +219,10 @@ node_t* KAlloc(size_t size){
 
     
     FreeLock(memLock);
+    executive->Permit();// We shouldn't need these... my allocation method needs to be better
     executive->allocationTotal += size;              // Allocation Audit
     return newBlock;
+    
     
 }
 
@@ -245,16 +251,13 @@ void Coalesce(node_t* node){
     //    return;
     //}
     
-    //Lock(memLock);
     
-    //need a better way to lock memory
+    //This should already be locked as it is called from the DefragMem function
     executive->Forbid();
     Remove(&executive->freeList,contig);
     node->nextContigious = contig->nextContigious;
     node->size +=contig->size;
     executive->Permit();
-    
-    //FreeLock(memLock);
     
 }
 
@@ -277,8 +280,8 @@ void DefragMem(){
 void KDealloc(node_t* node){
     
     lock_t* memLock = &executive->freeList.lock;
-    
     Lock(memLock);
+    executive->Forbid();// We shouldn't need these... my allocation method needs to be better
     
     node->type = MEM_TYPE_FREE;
     node->nodeType = NODE_MEMORY;
@@ -318,6 +321,7 @@ void KDealloc(node_t* node){
     
     AddHead(freelist, node);
     FreeLock(memLock);
+    executive->Permit();// We shouldn't need these... my allocation method needs to be better
 }
 
 void* AllocMem(size_t size, uint64_t type){
@@ -338,10 +342,10 @@ void* AllocMem(size_t size, uint64_t type){
         AddTail(&executive->thisTask->memoryList,node);
     }
     
-    node +=1;
+    //node +=1;
     
     
-    return (void*)node;
+    return (void*)&node[1];
     
 }
 

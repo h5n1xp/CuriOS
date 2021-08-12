@@ -52,10 +52,10 @@ void HiPriTask(){
     while(1){
         
 
-        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-10,2,8,8,graphics.Colour(0,0,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-15,5,10,10,graphics.Colour(0,0,0,0xFF));
         WaitMS(500);
 
-        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-10,2,8,8,graphics.Colour(255,127,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-15,5,10,10,graphics.Colour(255,127,0,0xFF));
         WaitMS(500);
     }
     
@@ -145,6 +145,11 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     return task;
 }
 
+void RemTask(task_t* task){
+    
+    
+    debug_write_string("Need to implement the RemTask function!\n");
+}
 
 void FreeSignal(uint32_t sigNum){
 
@@ -313,6 +318,7 @@ void Reschedule(){
 }
 
 
+/*
 //This function should probably be removed
 void SignalPrivate(registers_t* regs, task_t* task,uint64_t signals){   //signal a task
     
@@ -320,7 +326,7 @@ void SignalPrivate(registers_t* regs, task_t* task,uint64_t signals){   //signal
     //ReschedulePrivate(&regs->link);
     executive->elapsed = 0;
 }
-
+*/
 
 void Forbid(void){
         //asm volatile("cli");
@@ -332,7 +338,29 @@ void Permit(void){
        // asm volatile("sti");
 }
 
-static void signal_trap(registers_t* regs); // should probably be removed
+task_t* FindTask(char* name){
+    executive->Forbid();
+    
+    if(name==NULL){
+        executive->Permit();
+        return executive->thisTask;
+    }
+    
+    task_t* task = (task_t*) FindName(&executive->taskReady,name);
+    
+    if(task==NULL){
+        task = (task_t*) FindName(&executive->taskWait,name);
+    }
+    
+    if(task==NULL){
+        task = (task_t*) FindName(&executive->taskSuspended,name);
+    }
+    
+    executive->Permit();
+    return task;
+}
+
+//static void signal_trap(registers_t* regs); // should probably be removed
 static void wait_trap(registers_t* regs);
 
 void InitMultitasking(){
@@ -348,7 +376,7 @@ void InitMultitasking(){
     //debug_write_hex((uint32_t)executive);debug_putchar('\n');
 
     
-    register_interrupt_handler(48, signal_trap); //  fire int48 for immediate reschedule... should probably be removed
+    //register_interrupt_handler(48, signal_trap); //  fire int48 for immediate reschedule... should probably be removed
     register_interrupt_handler(49, wait_trap);   //  int49 interrupt to wait a task.
     
     
@@ -372,6 +400,8 @@ void InitMultitasking(){
     executive->thisTask          = NULL;
     
     executive->AddTask           = AddTask;
+    executive->RemTask           = RemTask;
+    executive->FindTask          = FindTask;
     executive->Wait              = Wait;
     executive->Signal            = Signal;
     executive->AllocSignal       = AllocSignal;
@@ -379,7 +409,6 @@ void InitMultitasking(){
     executive->SetTaskPri        = SetTaskPri;
     executive->Reschedule        = Reschedule;
     executive->ReschedulePrivate = ReschedulePrivate;
-    executive->SignalPrivate     = SignalPrivate;
     executive->Forbid            = Forbid;
     executive->Permit            = Permit;
 }
@@ -389,13 +418,13 @@ void InitMultitasking(){
 
 
 
-
+/*
 //Signal trap, this interupt causes an immediate reschedule... this should probably be removed...
 static void signal_trap(registers_t* regs){
     ReschedulePrivate(&regs->link);
     debug_write_string("Signal Trap!\n");
 }
-
+*/
 
 //wait trap, this interupt saves task state, and then reschedules
 static void wait_trap(registers_t* regs){
@@ -412,8 +441,7 @@ static void wait_trap(registers_t* regs){
     
     //add running task to waiting list
     AddHead(&executive->taskWait,(node_t*)task);
-
-
+    
     ReschedulePrivate(&regs->link);
     
 }
