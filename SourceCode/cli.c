@@ -21,6 +21,8 @@
 
 #include "timer.h"
 
+#include "math.h"
+
 int32_t width;
 int32_t height;
 int32_t x;
@@ -139,6 +141,8 @@ void ConsolePutChar(window_t* window, char character){
     
 }
 
+bool windowClear = true;
+
 void ConsoleRedraw(window_t* window){
  
     
@@ -200,17 +204,18 @@ void ConsoleRedraw(window_t* window){
     x = 0;
     y = 0;
     
-    executive->Forbid(); //intuition doesn't lock the buffers properly
-    
-    intuibase->ClearWindow(window);
-    
+    if(windowClear == false){
+        executive->Forbid(); //intuition doesn't lock the buffers properly for the clear window function
+        intuibase->ClearWindow(window);
+        executive->Permit();
+    }
     for(; i<bufferIndex;++i){
         ConsolePutCharPrivate(window,consoleBuffer[i]);
     }
 
-    executive->Permit();
+
     
-    
+    windowClear = false;
 }
 
 void ConsoleWriteString(window_t* window, char* str){
@@ -388,9 +393,30 @@ void clock(){
     intuibase->DrawCircle(clockWin,100,125,88,intuition.black,false);
     intuibase->FloodFill(clockWin,100,125,intuition.white);
     
+    float count = -1.570796327;
+    float inc = 0.104719755;
     
+    float x[60];
+    float y[60];
+
+    for(int i = 0;i<60;++i){
+        y[i] = sin(count);
+        x[i] = cos(count);
+        count += inc;
+    }
+
+    int i = 0;
     while(1){
-        WaitMS(100);
+        
+        int y2 = (int)(y[i]*80.0);
+        int x2 = (int)(x[i]*80.0);
+        intuibase->DrawLine(clockWin,100,125,x2+100,y2+125,intuibase->orange);
+        
+        i++;
+        if(i>59){i=0;}
+        
+        WaitMS(1000);
+        intuibase->DrawLine(clockWin,100,125,x2+100,y2+125,intuibase->white);
     }
     
 }
@@ -631,7 +657,8 @@ void bouncy(){
     //return 0;
 
     executive->thisTask->state = TASK_ENDED;
-    running = running / 0;  // pursposely crash the task.
+    volatile int endVar = 0;
+    running = running / endVar;  // pursposely crash the task.
     
 }
 
@@ -974,7 +1001,7 @@ void processCommand(int commandLength){
     
     //A quick way to crash the machine
     if(strcmp(commandBuffer,"guru") == 0){
-        char i = 0;
+        volatile char i = 0;
         char j = 128;
         char c = j / i;
         ConsolePutChar(console, c);
@@ -1063,9 +1090,18 @@ void processCommand(int commandLength){
                     return;
                 }
                 
-                executive->AddTask(tmp.entry,4096,0);
-    
-
+                task_t* task =  executive->AddTask(tmp.entry,4096,0);
+                
+                //remove the memory segment from this task's memory list and add it to the task's memory list
+                //All allocations relating to a task must be recorded in the task's own structure
+                //This is so they can be cleaned up upon exit.
+                //
+                //At the moment, LoadELF just returns the whole file, eventually it will return just the program segment
+                //The program segment will be type NODE_TASK_SEGMENT so won't need removing from the calling task's memory list
+                executive->Remove(&executive->thisTask->memoryList,(node_t*)tmp.segment);
+                tmp.segment->type = NODE_TASK_SEGMENT;  //Only needed because dos currently records the allocation on it's own memory list as data.
+                executive->AddTail(&task->memoryList,(node_t*)tmp.segment);
+                debug_write_string("Check this Segment ownership code in the run function in cli.c\n");
                 
                 //ConsoleWriteString(console,"\n");
                 dosbase->Close(file);
@@ -1198,21 +1234,9 @@ int CliEntry(void){
     
     //The Boot Task should be responsible for loading the initial Libraries and devices into memory.
     
-    /*
-    // Three Test tasks to be removed after debugging.
-    task_t* task = executive->AddTask(outputee,4096,0);
-    task->node.name = "Message Sender";
-
-    task = executive->AddTask(over,4096,0);
-    task->node.name = "Over Ball bounce";
     
-    task = executive->AddTask(receiverT,4096,0);
-    task->node.name = "Message Receiver";
-    */
-    
-    
-    
-    //setup the ata device as early as possible before the DOS Library, if the ATA device isn't ready DOS will hang the machine.
+        
+    //setup the ata device as early as possible before the DOS Library
     LoadATADevice();
     executive->AddDevice((device_t*)&ata);
   
@@ -1220,11 +1244,6 @@ int CliEntry(void){
     LoadFATHandler();
     executive->AddDevice((device_t*)&fatHandler);
     
-    //just busy wait,
-    //volatile int t = 0;
-    //for(int i=0;i<1000000;++i){
-    //    t++;
-    //}
     
     intuibase = (intuition_t*) executive->OpenLibrary("intuition.library",0);
     
@@ -1267,11 +1286,11 @@ int CliEntry(void){
         
             if(event->flags & WINDOW_EVENT_RESIZE){
                 intuibase->ResizeWindow(console, console->w - event->mouseXrel, console->h - event->mouseYrel);
+                windowClear = true; //window is alwasy clear after a resize event!
                 ConsoleSize(console);
             }
             
             if(event->flags & WINDOW_EVENT_RESIZE_END){
-                
                 ConsoleRedraw(console);
             }
             

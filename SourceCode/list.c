@@ -15,7 +15,7 @@ void InitList(list_t* list){
     list->pred = (node_t*)&list->head;
     
     list->node.size = sizeof(sizeof(list_t));
-    list->node.nodeType = NODE_LIST;
+    list->node.type = NODE_LIST;
     list->count = 0;
     
     list->lock.isLocked = false;

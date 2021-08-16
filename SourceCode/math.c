@@ -23,3 +23,53 @@ float hermite(float x, float y0, float y1, float y2, float y3){
     
     return ((c3 * x + c2) * x + c1) * x + c0;
 }
+
+float sin(float x){
+    float res=0;
+    float pow=x;
+    float fact=1.0;
+    
+    for(int i=0; i<6; ++i){
+        res+=pow/fact;
+        pow*=-1*x*x;
+        fact*=(2*(i+1))*(2*(i+1)+1);
+    }
+
+    return res;
+}
+
+float cos(float x){
+    
+    x =1.570796327 - x;
+    
+    float res=0;
+    float pow=x;
+    float fact=1.0;
+    
+    for(int i=0; i<6; ++i){
+        res+=pow/fact;
+        pow*=-1*x*x;
+        fact*=(2*(i+1))*(2*(i+1)+1);
+    }
+
+    return res;
+}
+
+/*
+double sin(double x){
+    int i = 1;
+    double cur = x;
+    double acc = 1;
+    double fact= 1;
+    double pow = x;
+    while (fabs(acc) > .00000001 &&   i < 100){
+        fact *= ((2*i)*(2*i+1));
+        pow *= -1 * x*x;
+        acc =  pow / fact;
+        cur += acc;
+        i++;
+    }
+    return cur;
+
+}
+*/

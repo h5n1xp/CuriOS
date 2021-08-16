@@ -17,7 +17,7 @@
 #define THEME_MAC 2
 #define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-int guiTheme = THEME_NEW;
+int guiTheme = THEME_OLD;
 
 // time to rewrite the pointer code?
 //the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
@@ -623,6 +623,9 @@ void drawTitleBar(){
 void RedrawBlitRects(window_t* window){
  
     // blit all blit rects to screen
+    //
+    // It would be good to check if graphics has a vaild framebuffer at this point
+    // if the framebuffer isn't valid, then don't bother blitting the windows.
     
     for(uint32_t i = 0; i<window->clipRects; ++i){
         if(window->clipRect[i].isVisible){
@@ -640,7 +643,7 @@ void RedrawBlitRects(window_t* window){
 
 void RedrawBlitRectsUpdates(window_t* window){
  
-    //this only updates blit rects which need updating.
+    //this only updates blit rects which need updating... not currently used, but useful on slow systems.
     
     Lock(&window->clipRectsLock);
     
@@ -746,7 +749,7 @@ void IntuitionUpdate(void){
 gadget_t* CreateGadget(window_t* window, uint32_t flags){
     
     gadget_t* gadget = (gadget_t*)executive->Alloc(sizeof(gadget_t));
-    gadget->node.nodeType = NODE_GADGET;
+    gadget->node.type = NODE_GADGET;
     AddHead(&window->gadgetList,(node_t*)gadget);
     
     gadget->window              = window;
@@ -2089,7 +2092,7 @@ void SetVisible(window_t* window, bool state){
 window_t* OpenWindowPrivate(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title){
     
     window_t* window =(window_t*)executive->Alloc(sizeof(window_t));
-    window->node.nodeType = NODE_WINDOW;
+    window->node.type = NODE_WINDOW;
     window->node.name = title;
     window->node.priority = 0;
     window->screenTitle = NULL;
@@ -2238,7 +2241,7 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
         return NULL;
     }
     
-    window->node.nodeType = NODE_WINDOW;
+    window->node.type = NODE_WINDOW;
     window->node.name = title;
     window->node.priority = 0;
     window->screenTitle = NULL;
@@ -2656,7 +2659,7 @@ void InitIntuition(library_t* library){
     //this is a called by exec's AddLibrary
     
     library->node.name = "intuition.library";
-    library->node.nodeType = NODE_LIBRARY;
+    library->node.type = NODE_LIBRARY;
     
     intuition.windowList = (list_t*)executive->Alloc(sizeof(list_t));
     InitList(intuition.windowList);
@@ -2672,6 +2675,9 @@ void InitIntuition(library_t* library){
     drawMouse();
     
     
+    //Start the window server, inaccurately called the input task due to it originally being the ps2 input task...
+    //the input task will be renamed to window server at some point
+    inputStruct.inputTask = executive->AddTask(InputTaskEntry,4096,20);
 }
 
 

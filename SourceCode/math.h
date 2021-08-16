@@ -10,8 +10,12 @@
 
 #include "stdheaders.h"
 
+#define PI 3.141592654
+
 int32_t abs(int32_t value);
 
 float hermite(float x, float y0, float y1, float y2, float y3); //simple bicubic interpolation
 
+float sin(float x);
+float cos(float x);
 #endif /* math_h */

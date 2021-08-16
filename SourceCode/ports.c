@@ -19,7 +19,7 @@ messagePort_t* CreatePort(char* name){
     
     messagePort_t* port = (messagePort_t*)executive->Alloc(sizeof(messagePort_t));
     port->node.name = name;
-    port->node.nodeType = NODE_MSGPORT;
+    port->node.type = NODE_MSGPORT;
     port->owner = executive->thisTask;
     port->sigNum = sigNum;
     executive->InitList(&port->messageList);

@@ -200,10 +200,10 @@ typedef struct{
     void (*DrawDecoration)(window_t* window);
     void (*GimmeZeroZero)(window_t* window);
     void (*SetScreenTitle)(window_t* window,char* title);
-    void (*MoveWindow)(window_t* window,int32_t x, int32_t y);
+    void (*MoveWindow)(window_t* window,int32_t x, int32_t y);  //Not currently thread safe... shouldn't be called by user tasks
     void (*ResizeWindow)(window_t*, uint32_t, uint32_t );
-    void (*WindowToBack)(window_t* window);
-    void (*WindowToFront)(window_t* window);
+    void (*WindowToBack)(window_t* window);                     //Not currently thread safe... shouldn't be called by user tasks
+    void (*WindowToFront)(window_t* window);                    //Not currently thread safe... shouldn't be called by user tasks
     void (*PriorityOrderPrivate)(window_t* window);
     void (*Focus)(window_t* window);
     void (*SetBusy)(window_t* window, bool state);

@@ -37,10 +37,10 @@ typedef struct{
     void (*debug_backspace)(void);
     void (*debug_putchar)(char c);
     
-    node_t* (*Alloc)(size_t);       //For allocating node_t types
-    void (*Dealloc)(node_t*);       //for deallocating node_t types
+    node_t* (*Alloc)(size_t);       //For allocating node_t types, it is the responsibility of the calling task to keep a record of the allocation
+    void (*Dealloc)(node_t*);       //for deallocating node_t types, it is the responsibility of the calling task to keep a record of the deallocation
     
-    void* (*AllocMem)(size_t size, uint64_t type); // the allocation is recorded in the task structure of the allocating context
+    void* (*AllocMem)(size_t size, uint64_t type); // the allocation is recorded in the task structure of the allocating context.
     void (*FreeMem)(void* pointer); // memory is returned to the free list.
     
     void (*InitList)(list_t* list);

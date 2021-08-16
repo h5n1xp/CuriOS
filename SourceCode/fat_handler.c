@@ -481,7 +481,7 @@ void getVolumeBootRecord(file_t* file){
         entry->dataArea   =  vbr->reserved_sectors + (vbr->number_of_file_allocation_tables * vbr32->sectors_per_fat);
         entry->dataArea  -= (vbr->sectors_per_cluster * 2);    //offset the data area pointer, so there is a 1:1 FAT to cluster relationship
         entry->rootBlock  = entry->dataArea + 2; //First 2 data clusters are unused with FAT
-        debug_write_string("FAT Handler: FAT32\n");
+        //debug_write_string("FAT Handler: FAT32\n");
     }
     
     //debug_write_string("Starting block: ");debug_write_dec(entry->startBlock);
@@ -501,7 +501,7 @@ void FATInit(){
     //debug_write_string("FAT Handler added\n");
     fatHandler.handler.isMounted = false;
     fatHandler.handler.device.library.node.name = "fat.handler";
-    fatHandler.handler.device.library.node.nodeType = NODE_HANDLER;
+    fatHandler.handler.device.library.node.type = NODE_HANDLER;
 
 }
 
@@ -526,7 +526,7 @@ int MountHandler(dosEntry_t* entry){
     messagePort_t* dosPort = executive->thisTask->dosPort;
     //need to create a temporary file_t structure as all DOS/Handler operations rely on one.
     file_t* root = (file_t*)executive->Alloc(sizeof(file_t)); //remember to dealloc this at the end of the DOS init
-    root->node.nodeType = NODE_FILE_DESCRIPTOR;
+    root->node.type = NODE_FILE_DESCRIPTOR;
     root->isDIR = true; //Because the root is a directory :-)
     root->request = executive->CreateIORequest(dosPort, sizeof(ioRequest_t));
     root->entry = entry;

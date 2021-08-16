@@ -1,3 +1,4 @@
+
 //
 //  ata.c
 //
@@ -207,11 +208,11 @@ void InitATA(library_t* lib){
         }
         
         if(driveStatusData[83] & 0x400){
-           debug_write_string("ATA Device: Master - LBA48 Drive - ");
+           //debug_write_string("ATA Device: Master - LBA48 Drive - ");
             
             uint64_t* lba = 0;
             lba = (uint64_t*)&driveStatusData[100];
-            debug_write_hex(*lba);debug_write_string(" sectors in size\n");
+            //debug_write_hex(*lba);debug_write_string(" sectors in size\n");
             
             ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t));
             ataUnit->unit.node.name = "DH0:";
@@ -344,7 +345,7 @@ void ATABeginIO(ioRequest_t* req){
 void LoadATADevice(){
     
     ata.device.library.node.name        = "ata.device";
-    ata.device.library.node.nodeType    = NODE_DEVICE;  // Devices can't be accessed by the file system, handlers can though.
+    ata.device.library.node.type        = NODE_DEVICE;  // Devices can't be accessed by the file system, handlers can though.
     ata.device.library.Open             = ATAOpen;
     ata.device.library.Close            = ATAClose;
     ata.device.library.Init             = InitATA;

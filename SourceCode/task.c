@@ -97,7 +97,7 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     
     task_t* task = (task_t*)buffer;
     
-    task->node.nodeType = NODE_TASK;
+    task->node.type = NODE_TASK;
    
     //set up kernel stack
     uint32_t frameSize = sizeof(registers_t);
@@ -147,8 +147,8 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
 
 void RemTask(task_t* task){
     
-    
     debug_write_string("Need to implement the RemTask function!\n");
+    debug_write_string(task->node.name);debug_write_string(" wants to end\n");
 }
 
 void FreeSignal(uint32_t sigNum){
@@ -281,13 +281,13 @@ void ReschedulePrivate(void_ptr* link){
         
         task_t* nextTask = (task_t*)RemHead(&executive->taskReady);
         
-        //Ready list becomes corrupted do to this function being called twice in a row?!
-        if(nextTask->node.nodeType != NODE_TASK){
-            //graphics.RenderString(&graphics.frameBuffer,topazOld_font,600,60,"READY LIST CORRUPT!",graphics.Colour(255,255,255,255),graphics.Colour(65,65,65,255));
-            debug_write_string("Ready list corrupt! ->");
-            executive->elapsed = executive->quantum;
-            return;
-        }
+        //Ready list becomes corrupted do to this function being called twice in a row?! - NO LONGER NEEDED AS THE WAITING -> READY CODE HAS BEEN FIXED
+        //if(nextTask->node.type != NODE_TASK){
+        //    //graphics.RenderString(&graphics.frameBuffer,topazOld_font,600,60,"READY LIST CORRUPT!",graphics.Colour(255,255,255,255),graphics.Colour(65,65,65,255));
+        //    debug_write_string("Ready list corrupt! ->");
+        //    executive->elapsed = executive->quantum;
+        //    return;
+        //}
         
         //save current task state... just the stack for now
         task_t* task = executive->thisTask;
@@ -390,8 +390,8 @@ void InitMultitasking(){
     regs->ds = 0x10;
     regs->ss = 0x10;
     
-    
-    inputStruct.inputTask = AddTask(InputTaskEntry,4096,20);
+    //This shouldn't be started here! This is the intuition window server task, intuition should start it.
+    //inputStruct.inputTask = AddTask(InputTaskEntry,4096,20);
     
     //To Test out task priorities
     task = AddTask(HiPriTask,4096,30);

@@ -18,7 +18,6 @@ const char VERSTAG[] = "\0$VER: CuriOS 0.46a (10/08/2021) by Matt Parsons";
 
 
 #include "descriptor_tables.h"
-//#include "terminal.h"
 #include "timer.h"
 #include "task.h"
 #include "memory.h"
@@ -29,18 +28,18 @@ const char VERSTAG[] = "\0$VER: CuriOS 0.46a (10/08/2021) by Matt Parsons";
 #include "x86cpu_ports.h"
 #include "SystemLog.h"
 
+#include "pci.h"
 #include "ps2.h"
-
 #include "cli.h"    //This is, for now, the boot task...
 
-
+#include "math.h"
 
 void KernelTaskEntry(){
     
-    
-    
-    
+
 }
+
+
 
 void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     
@@ -55,6 +54,12 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
         init_from_multiboot(mbd);
     }
     
+    //Setup multitasking system
+    InitMultitasking();
+    
+    //Here we should create a high priority "Kernel task" (I'll probably call it Executive), which can set everything up and then remain alive to handle kernel related functions. we can then hand off everything currently dont below to that task.
+    
+    
     //Initilise the graphics library.
     LoadGraphicsLibrary(mbd);
     executive->AddLibrary((library_t*)&graphics);
@@ -63,7 +68,8 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     LoadIntuitionLibrary();
     executive->AddLibrary((library_t*)&intuition);
     
-    //Initilise the System debugging log
+    
+    //Initilise the System debugging log... to be replaced with a proper console when the console.device works
     InitSystemLog(0,graphics.frameBuffer.height/2,graphics.frameBuffer.width,graphics.frameBuffer.height/2);
     debug_write_string("Build Date: ");
     debug_write_string(__DATE__);
@@ -77,12 +83,10 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     debug_write_dec(mbd->framebuffer_width); debug_write_string(" \nheight: ");
     debug_write_dec(mbd->framebuffer_height); debug_write_string(" \nbit depth: ");
     debug_write_dec(mbd->framebuffer_bpp); debug_write_string(" \n");
+    
     //get CMOS TIME
     //debug_write_dec()
-    
-    
-    //Setup initial tasks
-    InitMultitasking();
+        
     
     
    // debug_write_string("Boot Task Currently Disabled in kernel.c");
@@ -94,9 +98,14 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     //Initilise the system timer to 1000Hz
     InitTimer(1000);
     
-    //Initilise the PS2 port, for mouse and keyboard
+    //Load and initilise the pci.device
+    LoadPCIDevice();
+    executive->AddDevice((device_t*)&pci);
+    
+    //Initilise the PS2 port, for mouse and keyboard... We should only do this if PCI->USB fails
     InitPS2();
 
+    
     //Start the multitasking, but starting the interrupts, the timer will fire and immediately schedule in any ready tasks
     asm volatile("sti"); //<--- Once multitasking is started, this thread can never be scheduled back in.
     

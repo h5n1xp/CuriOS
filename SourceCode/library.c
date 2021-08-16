@@ -12,8 +12,8 @@ library_t LibExample;
 void LibInit(library_t* library){
     //Called by AddLibrary() function in the Executive
     library->baseLibrary = library;
-    library->node.nodeType = NODE_LIBRARY;
-    library->node.name  = "example.library";
+    library->node.type   = NODE_LIBRARY;
+    library->node.name   = "example.library";
 }
 
 library_t* LibOpen(library_t* library){

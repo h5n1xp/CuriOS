@@ -160,13 +160,14 @@ node_t* KAlloc(size_t size){
 
     
     do{
+        
         //exact match
         if(freeblock->size == size){
             Remove(freelist, freeblock);
             freeblock->priority = 0;
             freeblock->flags = 0;
-            freeblock->type = MEM_TYPE_ALLOC;
-            freeblock->nodeType = NODE_UNKNOWN;
+            freeblock->allocFlags = ALLOC_FLAGS_ALLOC;
+            freeblock->type = NODE_UNKNOWN;
             freeblock->next = NULL;
             freeblock->prev = NULL;
             
@@ -176,7 +177,7 @@ node_t* KAlloc(size_t size){
             return freeblock;
         }
         
-        if(freeblock->size > size + (sizeof(node_t) * 2 ) ){
+        if(freeblock->size > (size + sizeof(node_t)) ){ // even a node with no size needs memory to keep the node header
             break;
         }
         
@@ -188,7 +189,20 @@ node_t* KAlloc(size_t size){
     if(freeblock->next == NULL){
         FreeLock(memLock);
         executive->Permit();// We shouldn't need these... my allocation method needs to be better
-        debug_write_string("OUT OF MEMORY!");
+        debug_write_string("OUT OF MEMORY!\nRequested: ");
+        debug_write_dec(size);debug_putchar('\n');
+        //Print out free blocks to Debug window
+        node_t* node = executive->freeList.head;
+        
+        while(node->next != NULL){
+            debug_putchar(' ');
+            debug_write_hex((uint32_t)node);debug_write_string(": ");
+            debug_write_dec(node->size);debug_write_string(" bytes\n");
+            node = node->next;
+        }
+        
+        
+        
         executive->thisTask->guru = GURU_MEDITATION_OUT_OF_MEMORY;
         asm volatile("int $15");                //<--- generate an exception
         return NULL;
@@ -206,8 +220,8 @@ node_t* KAlloc(size_t size){
     newBlock->size = size;
     newBlock->priority = 0;
     newBlock->flags = 0;
-    newBlock->type = MEM_TYPE_ALLOC;
-    newBlock->nodeType = NODE_UNKNOWN;
+    newBlock->allocFlags = ALLOC_FLAGS_ALLOC;
+    newBlock->type = NODE_UNKNOWN;
     newBlock->next = NULL;
     newBlock->prev = NULL;
     newBlock->nextContigious = freeblock->nextContigious;
@@ -235,7 +249,7 @@ void Coalesce(node_t* node){
         return;
     }
     
-    if( (contig->type & MEM_TYPE_ALLOC) == MEM_TYPE_ALLOC){
+    if( (contig->allocFlags & ALLOC_FLAGS_ALLOC) == ALLOC_FLAGS_ALLOC){
         return;
     }
     
@@ -283,8 +297,8 @@ void KDealloc(node_t* node){
     Lock(memLock);
     executive->Forbid();// We shouldn't need these... my allocation method needs to be better
     
-    node->type = MEM_TYPE_FREE;
-    node->nodeType = NODE_MEMORY;
+    node->allocFlags = ALLOC_FLAGS_FREE;
+    node->type = NODE_MEMORY;
     node->priority = 0;
     node->flags = 0;
     
@@ -335,7 +349,7 @@ void* AllocMem(size_t size, uint64_t type){
     size +=sizeof(node_t);
     
     node_t* node = KAlloc(size);
-    node->nodeType = NODE_DATA_BLOCK;
+    node->type = NODE_DATA_BLOCK;
     
     //add this memory allocation to the calling task's memory list
     if(executive->thisTask != NULL){
@@ -411,6 +425,7 @@ void AddDevice(device_t* device){
     device->library.Init(&device->library);
     
     /* // now isn't the correct time to check to see what units the device may have.
+    // But it might be an idea to check for an error as the device may fail init and so not be vaild
     if(device->unitList.count < 1 ){
         debug_write_string("Device Open failure: No units!!");
     }
@@ -560,8 +575,8 @@ void InitMemory(void* startAddress, uint64_t size){
 
     node_t* freeblock = startAddress + sizeof(executive_t);
     freeblock->size = size - sizeof(executive_t);
-    freeblock->type = MEM_TYPE_FREE;
-    freeblock->nodeType = NODE_MEMORY;
+    freeblock->allocFlags = ALLOC_FLAGS_FREE;
+    freeblock->type = NODE_MEMORY;
     freeblock->nextContigious = NULL;
     AddHead(startAddress, freeblock);
     

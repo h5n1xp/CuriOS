@@ -68,7 +68,7 @@ void isr_handler(registers_t regs){
         
         
         //If the window server has crashed we need a non GUI Guru
-        //if(strcmp("Input Task",task->node.name)){
+        if(strcmp("Input Task",task->node.name)){
            
             graphics.DrawRect(&graphics.frameBuffer,0, 0, graphics.frameBuffer.width,graphics.frameBuffer.height, graphics.Colour(0,0,0,0xFF));
             graphics.DrawRect(&graphics.frameBuffer,0, 0, graphics.frameBuffer.width,100, graphics.Colour(255,0,0,0xFF));
@@ -78,7 +78,7 @@ void isr_handler(registers_t regs){
             graphics.RenderString(&graphics.frameBuffer,intuition.defaultFont,300,20,trap_strs[int_no],graphics.Colour(255,0,0,0xFF),graphics.Colour(0,0,0,0xFF));
             graphics.RenderString(&graphics.frameBuffer,intuition.defaultFont,30,40,"Task:",graphics.Colour(255,0,0,0xFF),graphics.Colour(0,0,0,0xFF));
             graphics.RenderString(&graphics.frameBuffer,intuition.defaultFont,300,40,task->node.name,graphics.Colour(255,0,0,0xFF),graphics.Colour(0,0,0,0xFF));
-        //}
+        }
         
                            
         //The task definitly crashed :(

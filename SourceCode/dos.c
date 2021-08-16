@@ -205,7 +205,7 @@ file_t* Open(char* fileName, uint64_t attributes){
     //need to Open the underlying device, likely the ata.device
     //save the IORequest into the file_t structure.
     file_t* file = (file_t*)executive->Alloc(sizeof(file_t));
-    file->node.nodeType = NODE_FILE_DESCRIPTOR;
+    file->node.type = NODE_FILE_DESCRIPTOR;
     file->request = executive->CreateIORequest(executive->thisTask->dosPort, sizeof(ioRequest_t));
     file->entry = entry;
     //debug_write_string("allocated a file structure\n");
@@ -469,15 +469,25 @@ executable_t LoadELF(file_t* file){
             
         }
         
+        //Find the exit section
+        if(!strcmp(&strings[entry.sh_name],".exit")){
+            //debug_putchar(' ');debug_write_dec(entry.sh_offset);
+            
+            //Fixup the exit function pointer
+            //uint32_t* exit_fn =  (uint32_t*) &buffer[entry.sh_offset];
+            //*exit_fn = (uint32_t) ....
+            
+        }
+        
         //debug_putchar('\n');
         
     }
    
     
     
-    //Entry function
+    //Entry function, here DOS should allocate a proger TASK_SEGMENT node and copy the program into it, freeing the loaded ELF file from memory
     ret.type = 1;
-    ret.segment = buffer;
+    ret.segment = (node_t*)buffer;
     ret.entry = &buffer[4096 + header->e_entry];
     
 
@@ -496,20 +506,20 @@ void InitDOS(library_t* library){
     InitList(&dos.dosList);
     library->node.name = "dos.library";
  
-    
+    //Handler should already have been loaded and inited by the boot task
     handler_t* fat = executive->OpenHandler("fat.handler",0);
     //debug_write_hex((uint32_t)fat);debug_putchar('\n');
     
     
-    debug_write_string("DOS Library: Setting up hard disk device... dh0: \n");
+    //debug_write_string("DOS Library: Setting up hard disk device... dh0: \n");
     
     //Add a FAT file system handler to DOS, which sits on top of the ATA device, first partition.
     node_t* node                    = executive->Alloc(sizeof(dosEntry_t));
-    node->nodeType                  = NODE_DOS_ENTRY;
+    node->type                      = NODE_DOS_ENTRY;
     node->name                      = "dh0";
     dosEntry_t* bootDOSEntry        = (dosEntry_t*)node;
     
-    //bootDOSEntry->handlerName       = "fat.handler";
+
     bootDOSEntry->handler           = (library_t*)fat;
     bootDOSEntry->handlerNumber     = 0;
     bootDOSEntry->deviceName        = "ata.device";
@@ -536,55 +546,6 @@ void InitDOS(library_t* library){
     executive->thisTask->progdir = executive->AllocMem(5,0); //need 5 bytes, the name plus null
     strcpy(executive->thisTask->progdir,"dh0:");
     return;
-    
-    
-    
-    
-    
-    /*
-    //need to create a temporary file_t structure as all DOS/Handler operations rely on one.
-    file_t* root = (file_t*)executive->Alloc(sizeof(file_t)); //remember to dealloc this at the end of the DOS init
-    root->isDIR = true; //Because the root is a directory :-)
-    root->request = executive->CreateIORequest(dosPort, sizeof(ioRequest_t));
-    root->entry = bootDOSEntry;
-    
-    // At this point we need to call the Handler's mount function which should perform the setup done below
-    // Need to add an Open Handler function to Exec to open a device as a library?
-    //
-    //
-    
-    //now we have a valid IO Request, open the ata.device, remember to close the device at the end of the DOS init
-    if(executive->OpenDevice(bootDOSEntry->deviceName,bootDOSEntry->unitNumber,root->request,0)){
-        debug_write_string("DOS Library: No Hard Disk!!!\n");
-        
-        //Need to do the Clean DOS init clean up!!!
-        executive->Dealloc((node_t*)root->request); //deallocate the IORequest
-        executive->Dealloc((node_t*)root);
-        
-        return;
-    }
-
-    //Since the device opened OK, Allocate a one 512byte buffer for the File IORequest
-    uint8_t* buffer = executive->AllocMem(512,0);
-    root->request->data = buffer;
-    
-    
-    //if we get this far the dos entry is vaild, so add it to the doslist!
-    dos.AddDosEntry(bootDOSEntry);
-
-    
-    //get location of first partition, which will be our Boot partition
-    getPartitionData(root, 0);
-
-    //Examine(root);
-    
-    //file_t clean up!
-    Close(root);
-   // executive->CloseDevice(root->request);      //close the ata device
-   // executive->FreeMem(root->request->data);    //free the memory used by the IORequest
-   // executive->Dealloc((node_t*)root->request); //deallocate the IORequest
-   // executive->Dealloc((node_t*)root);          //deallocate the file structure node
-    */
     
     
     
@@ -649,7 +610,7 @@ void AddDosEntry(dosEntry_t* entry){
 
 void LoadDOSLibrary(){
     
-    dos.library.node.nodeType   = NODE_LIBRARY;
+    dos.library.node.type       = NODE_LIBRARY;
     dos.library.Init            = InitDOS;
     dos.library.Open            = OpenLib;
     dos.library.Close           = CloseLib;

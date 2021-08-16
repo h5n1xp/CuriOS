@@ -14,9 +14,10 @@
 
 
 /*----- Mem Types -----*/
-#define MEM_TYPE_FREE   0   // Free, ready to be allocated
-#define MEM_TYPE_ALLOC  1   // Allocated and in use
-#define MEM_TYPE_PUBLIC 2   // Public/Shared between tasks
+#define ALLOC_FLAGS_FREE   0    // Free, ready to be allocated
+#define ALLOC_FLAGS_ALLOC  1    // Allocated and in use
+#define ALLOC_FLAGS_PUBLIC 2    // Public/Shared between tasks, if this bit is not set, then the node sholdn't be shared
+                                // Public/shared nodes are usually kept in lists owned by the operating system
 
 /*----- Node Types -----*/
 #define NODE_UNKNOWN             0
@@ -35,7 +36,8 @@
 #define NODE_HANDLER            13
 #define NODE_FILE_DESCRIPTOR    14
 #define NODE_DOS_ENTRY          15
-#define NODE_DATA_BLOCK         16 
+#define NODE_DATA_BLOCK         16
+#define NODE_TASK_SEGMENT       17
 
 typedef struct {
     volatile bool isLocked;
@@ -45,14 +47,17 @@ typedef struct {
 
 typedef struct node_t node_t;
 
+
+//
+//Would it make sense for nodes to have checksums?
 struct node_t{
     node_t* next;
     node_t* prev;
-    node_t* nextContigious;
+    node_t* nextContigious; // this is just address + size... we can probably deprecate it. it is probably only used by the coellese function
     int32_t priority;
     uint32_t flags;
-    uint32_t type;          //memory type
-    uint32_t nodeType;      //node type
+    uint32_t allocFlags;    // Allocation type. For systems without hardwre MMU this will be important to enforce memory access privilages
+    uint32_t type;      //node type 
     uint64_t size;
     char* name;
 };

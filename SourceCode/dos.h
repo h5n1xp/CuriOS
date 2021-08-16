@@ -77,9 +77,9 @@ typedef struct{
 
 
 typedef struct{
-    int type;
-    void* segment;
-    void* entry;
+    int type;           // 0 = Not executable, 1 = From CLI only, 2 = Standalone task, 3 = Library;
+    node_t* segment;    // memory node where the progam is stored, .text and .data
+    void* entry;        // entry point of the code.
 } executable_t;
 
 typedef struct{

@@ -26,6 +26,7 @@ char scrTit[] = "Debugging Console";
 intuition_t* intui;
 
 void debug_show(){
+    intui->WindowToFront(sysLogWindow); //<--This shouldn't be called outside of the input task, as it's not thread safe yet.
     intui->SetVisible(sysLogWindow,true);
 }
 

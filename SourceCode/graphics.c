@@ -213,8 +213,14 @@ void BlitBitmap(bitmap_t* source, bitmap_t* dest, uint32_t x, uint32_t y){
 
 bitmap_t* NewBitmap(uint32_t w,uint32_t h){
     
+    //I want this to alloc on the calling task's memorylist
+    //but then we have the problem that if a task crashes, it will have it's resources deallocated
+    //then intuition will try and access memory that is no longer allocated.
+    //So the management of bitmaps needs to be handled higher up the interface chain, in intution.
+    //tasks can only access bitmaps via the intution interface anyway.
+    
     bitmap_t* bm = (bitmap_t*)executive->Alloc( (w*h*4) + sizeof(bitmap_t));
-    bm->node.nodeType = NODE_BITMAP;
+    bm->node.type = NODE_BITMAP;
     bm->width = w;
     bm->height = h;
     bm->bpp = 32;
@@ -387,14 +393,11 @@ void DrawVerticalLine(bitmap_t* bm, uint32_t x, uint32_t y,uint32_t length, uint
     
 }
 
-//Quick and dirty asb() function for the line draw alogrythm, replace with a real function
-//int32_t absG(int32_t value){
-//
-//    if ( value < 0){value = -value;}
-//    return value;
-//}
 
 void DrawLine(bitmap_t* bm,uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t rgb){
+    
+    //Should probably optimise for the vertical and the hosisontal... but performance hasn't been an issue.
+    
     int32_t dx =  abs(x1-x0);
     int32_t sx = x0<x1 ? 1 : -1;
     int32_t dy = -abs(y1-y0);
@@ -737,7 +740,7 @@ void ClearSprite(sprite_t* sprite){
 
 palette_t* CreatePalette(uint32_t numberOfColours){
     palette_t* pal = (palette_t*)executive->Alloc( ( sizeof(colour_t) * numberOfColours ) + sizeof(palette_t));
-    pal->node.nodeType = NODE_PALETTE;
+    pal->node.type = NODE_PALETTE;
     pal->count = numberOfColours;
     void* data = pal + 1;
     pal->colour = (colour_t*)data;
@@ -757,7 +760,7 @@ colour_t GetColour(palette_t* palette, uint32_t index){
 
 void InitGraphics(library_t* library){
     //perhaps check for a proper gfx card here?
-    library->node.nodeType = NODE_LIBRARY;
+    library->node.type  = NODE_LIBRARY;
     library->node.name  = "graphics.library";
 }
 
