@@ -220,6 +220,8 @@ file_t* Open(char* fileName, uint64_t attributes){
         return NULL;
     }
     
+    
+    
     //debug_write_string("underlying device opened\n");
     
     //Since the device opened OK, Allocate a one 512byte buffer for the File IORequest
@@ -359,10 +361,13 @@ directoryStruct_t* Examine(file_t* dir){
     //Get the handler
     handler_t* handler = (handler_t*) dir->entry->handler;
     
+   // debug_write_string(" Prepare to ReadDIR...");
     directoryStruct_t* ds = handler->ReadDir(dir,dir->startBlock);
+    //debug_write_string(" red ");
 
     return ds;
 }
+
 
 
 
@@ -557,7 +562,7 @@ void InitDOS(library_t* library){
 
 
 library_t* OpenLib(library_t* lib){
-    //dos.library.openCount +=1;
+    
     lib->openCount +=1;
     
     //initilise the DOS Message port of the calling task

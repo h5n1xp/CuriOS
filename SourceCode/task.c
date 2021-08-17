@@ -29,6 +29,9 @@ int IdleTask(){
     
     while(1){
         
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-25,5,10,10,graphics.Colour(0,0,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-24,6,8,8,graphics.Colour(0,0,255,0xFF));
+        
        // debug_write_dec(time);
         for(int i=0;i<1000;++i){
             asm("hlt");
@@ -40,6 +43,18 @@ int IdleTask(){
 
         
         
+        
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-25,5,10,10,graphics.Colour(0,0,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-24,6,8,8,graphics.Colour(255,255,255,0xFF));
+        
+        // debug_write_dec(time);
+         for(int i=0;i<1000;++i){
+             asm("hlt");
+         }
+         DefragMem();
+         //debug_write_string("s");
+         time +=1;
+         //graphics.DrawRect(&graphics.frameBuffer, 800,0,50,50,graphics.Colour(0,0,0,0xFF));
     }
     
     return 0;
@@ -53,9 +68,11 @@ void HiPriTask(){
         
 
         graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-15,5,10,10,graphics.Colour(0,0,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-14,6,8,8,graphics.Colour(255,127,0,0xFF));
         WaitMS(500);
 
-        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-15,5,10,10,graphics.Colour(255,127,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-15,5,10,10,graphics.Colour(0,0,0,0xFF));
+        graphics.DrawRect(&graphics.frameBuffer, graphics.frameBuffer.width-14,6,8,8,graphics.Colour(0,0,0,0xFF));
         WaitMS(500);
     }
     
@@ -124,14 +141,22 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     task->ssp +=4;  // initial esp needs to point to 4 bytes higher in mem than the stack frame.
     frame->link = task->ssp;
 
-
+    task->affinity = -1;        // Any CPU will do
+    task->type = 0;             // No CPU types yet
+    task->state = TASK_READY;
+    task->guru = GURU_MEDITATION_NO_ERROR;  // when something goes wrong an error code can be saved in the task structure.
     task->parent = executive->thisTask;
+    task->dosPort = NULL;       // Noy all task need disk access
+    task->dosError = 0;
+    task->progdir = NULL;
+    executive->InitList(&task->memoryList);
+    task->forbidCount = 0;
     task->signalAlloc = 65535;// first 16 signals are for Operating system use;
     task->signalWait = 0;
     task->signalReceived = 0;
-    task->forbidCount = 0;
-    task->state = TASK_READY;
-    task->guru = GURU_MEDITATION_NO_ERROR;  // when something goes wrong an error code can be saved in the task structure.
+
+
+
     
     //set up message port
     
@@ -180,6 +205,9 @@ int32_t AllocSignal(int32_t sigNum){
         }
         
         task->signalAlloc |= (1 << sig);
+        
+        //debug_write_string(task->node.name);debug_write_string(" Signal: "); debug_write_dec(sig);debug_putchar('\n');
+        
         return sig;
         
     }
@@ -187,6 +215,8 @@ int32_t AllocSignal(int32_t sigNum){
     if( task->signalAlloc & (1 << sigNum) ){
         return -1;
     }
+    
+
     
     task->signalAlloc |= (1 << sigNum);
     return sigNum;

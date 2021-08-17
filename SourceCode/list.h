@@ -16,7 +16,7 @@
 /*----- Mem Types -----*/
 #define ALLOC_FLAGS_FREE   0    // Free, ready to be allocated
 #define ALLOC_FLAGS_ALLOC  1    // Allocated and in use
-#define ALLOC_FLAGS_PUBLIC 2    // Public/Shared between tasks, if this bit is not set, then the node sholdn't be shared
+#define ALLOC_FLAGS_PUBLIC 2    // Public/Shared between tasks, if this bit is not set, then the node shouldn't be shared between tasks
                                 // Public/shared nodes are usually kept in lists owned by the operating system
 
 /*----- Node Types -----*/

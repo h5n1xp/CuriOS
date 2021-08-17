@@ -10,6 +10,10 @@
 #include "font.h"
 #include "math.h"
 
+//Debugging includes
+#include "timer.h"
+#include "SystemLog.h"
+
 graphics_t graphics;
 
 
@@ -35,11 +39,27 @@ void put_pixel16(bitmap_t* bm, uint32_t x,uint32_t y, uint32_t colour){
 
 
 uint32_t get_pixel32(bitmap_t* bm, uint32_t x,uint32_t y){
-    //Lock(&bm->lock);
-    //executive->Forbid();
-    uint32_t* p = bm->buffer;
-    //executive->Permit();
-    //FreeLock(&bm->lock);
+
+    
+    if(bm->node.type != NODE_BITMAP){
+        return 0;
+    }
+    
+    if(x>=bm->width){ //can't be negative
+        //executive->Permit();
+        //FreeLock(&bm->lock);
+        return 0;
+    }
+ 
+    if(y>=bm->height){ //can't be negative
+        //executive->Permit();
+        //FreeLock(&bm->lock);
+        return 0;
+    }
+
+    
+    volatile uint32_t* p = bm->buffer;
+
     return (uint32_t)p[(y * bm->width) + x];
 }
 
@@ -47,6 +67,11 @@ void put_pixel32(bitmap_t* bm, uint32_t x,uint32_t y, uint32_t colour){
     //Lock(&bm->lock);
     //executive->Forbid();
     //clipping
+    
+    if(bm->node.type != NODE_BITMAP){
+        return;
+    }
+    
     if(x>=bm->width){ //can't be negative
         //executive->Permit();
         //FreeLock(&bm->lock);
@@ -59,7 +84,7 @@ void put_pixel32(bitmap_t* bm, uint32_t x,uint32_t y, uint32_t colour){
         return;
     }
 
-    uint32_t* p = bm->buffer;
+    volatile uint32_t* p = bm->buffer;
     p[(y * bm->width) + x] = colour;
     //executive->Permit();
     //FreeLock(&bm->lock);
@@ -220,11 +245,16 @@ bitmap_t* NewBitmap(uint32_t w,uint32_t h){
     //tasks can only access bitmaps via the intution interface anyway.
     
     bitmap_t* bm = (bitmap_t*)executive->Alloc( (w*h*4) + sizeof(bitmap_t));
+    
+    if(bm==NULL){
+        return bm;
+    }
+    
     bm->node.type = NODE_BITMAP;
     bm->width = w;
     bm->height = h;
     bm->bpp = 32;
-    void* buffer = bm + 1;
+    void* buffer = &bm[1];
     bm->buffer = buffer;
     return bm;
     
@@ -452,8 +482,10 @@ void DrawCircle(bitmap_t* bm, uint32_t x0, uint32_t y0, uint32_t r, uint32_t rgb
     int y8 = y0 - r;
     
     //calculate number of iterations required
+
     float g = r * 0.72;
     int end =(int)g;
+
     int lastD = 0;
     
     int i = 0;
@@ -541,27 +573,62 @@ void DrawCircle(bitmap_t* bm, uint32_t x0, uint32_t y0, uint32_t r, uint32_t rgb
         
     }while(i <= end);
        
+
     
 }
 
-
+//flood fill seems to fail occaionally
 void FloodFill(bitmap_t* bm, uint32_t x, uint32_t y, uint32_t rgb){
         
     // Get Target Colour
     uint32_t targetColour = get_pixel32(bm,x,y);
-
-    //Point2D map[bm->width*bm->height];
-    Point2D* map = (Point2D*)executive->AllocMem((bm->width*bm->height)*sizeof(Point2D),0);
+    
+    if(targetColour == rgb){
+        return;
+    }
+  
+    //debug_write_string("FF\nw:");
+    //debug_write_dec(bm->width);debug_putchar('\n');
+   // debug_write_dec(bm->height);debug_putchar('\n');
+    //WaitMS(32);
+    
+    int size = (bm->width * bm->height);
+    
+    //Point2D* map = (Point2D*)executive->AllocMem(size*sizeof(Point2D),0);
+    node_t* buffer = executive->Alloc( ( size * sizeof(Point2D) )+sizeof(node_t) );//Alloc a node is faster than AllocMem as no record is kept of the allocation
+    Point2D* map = (Point2D*)&buffer[1];//this now points to the area below the node header
     
     if(map==NULL){
         return;
     }
     
+    
     int mapIndex = 0;
     int mapPointer = -1;
     
+
     
     do{
+    
+        /*
+        if(x>bm->width ){
+            debug_write_string("x Value out of bounds\n");
+            debug_write_dec(x);debug_putchar('\n');
+            debug_write_dec(mapPointer);debug_putchar('\n');
+            debug_write_dec(mapIndex);debug_putchar('\n');
+            asm volatile("int $15");                //<--- generate an exception
+            return;
+        }
+        
+        if(y>bm->height){
+            debug_write_string("y Value out of bounds: ");
+            debug_write_dec(y);debug_putchar('\n');
+            debug_write_dec(mapPointer);debug_putchar('\n');
+            debug_write_dec(mapIndex);debug_putchar('\n');
+            asm volatile("int $15");                //<--- generate an exception
+            return;
+        }
+        */
         
         // if pixel is already drawn, then jump over it.
         if( get_pixel32(bm,x,y) == rgb){
@@ -606,10 +673,14 @@ void FloodFill(bitmap_t* bm, uint32_t x, uint32_t y, uint32_t rgb){
         x = map[mapPointer].x;
         y = map[mapPointer].y;
         
-    }while(mapPointer < mapIndex);
+    }while(mapPointer < mapIndex && mapIndex < size);
         
-    executive->FreeMem(map);
-    
+   // debug_write_dec(mapPointer);debug_putchar('\n');
+   // debug_write_dec(mapIndex);debug_putchar('\n');
+
+    executive->Dealloc(buffer);
+    //executive->FreeMem(map);
+
     return;
 
 }

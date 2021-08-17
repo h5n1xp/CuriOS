@@ -29,7 +29,7 @@ float sin(float x){
     float pow=x;
     float fact=1.0;
     
-    for(int i=0; i<6; ++i){
+    for(int i=0; i<12; ++i){
         res+=pow/fact;
         pow*=-1*x*x;
         fact*=(2*(i+1))*(2*(i+1)+1);
@@ -46,7 +46,7 @@ float cos(float x){
     float pow=x;
     float fact=1.0;
     
-    for(int i=0; i<6; ++i){
+    for(int i=0; i<12; ++i){
         res+=pow/fact;
         pow*=-1*x*x;
         fact*=(2*(i+1))*(2*(i+1)+1);

@@ -180,6 +180,7 @@ void InitATA(library_t* lib){
     
     
     //just have a single messagePort for all the ATA device units for now...
+    //This setup needs to be done in the actaul device task!!!
     ATAPort = executive->CreatePort("ATA Unit"); // WARNING THIS SETS THE OWNING TASK TO THE InitATA() CALLER, NOT THE DEVICE TASK!!!
     ATAPort->owner = ata.device.task;   //need to set the correct owning task of this message port.
     

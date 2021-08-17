@@ -12,9 +12,6 @@
 #include "memory.h"
 #include "intuition.h"
 
-//This will be the Boot task, so it will bring up the early devices
-#include "ata.h"
-#include "fat_handler.h"
 #include "dos.h"
 
 #include "SystemLog.h"
@@ -23,128 +20,161 @@
 
 #include "math.h"
 
-int32_t width;
-int32_t height;
-int32_t x;
-int32_t y;
 
-uint32_t conCurX;
-uint32_t conCurY;
 
 intuition_t* intuibase;
 
-uint32_t bufferIndex;
 
 
-char consoleBuffer[4096];
+typedef struct {
+    window_t* window;
+    
+    int32_t width;
+    int32_t height;
+    int32_t x;
+    int32_t y;
 
-void ConsoleClearCursor(window_t* window){
+    uint32_t conCurX;
+    uint32_t conCurY;
 
-    intuibase->DrawRectangle(window,conCurX, conCurY, 8, 16, window->backgroundColour);
+    intuition_t* intuibase;
+    
+    uint32_t bufferIndex;
+    char consoleBuffer[4096];
+    
+    bool windowClear;
+    
+    
+    //Command interpretor data
+    dos_t* dosbase;
+    uint32_t commandBufferIndex;
+    char commandBuffer[512];
+    char lastCommand[512];
+    
+}console_t;
+
+
+
+
+
+
+void ConsoleClearCursor(console_t* console){
+    
+    window_t* window = console->window;
+    
+    intuibase->DrawRectangle(window,console->conCurX, console->conCurY, 8, 16, window->backgroundColour);
 }
 
 
 
-void ConsoleDrawCursor(window_t* window, uint32_t x, uint32_t y){
-    conCurX = (x*8)+4;
-    conCurY = (y*16)+22;
-    intuibase->DrawRectangle(window,conCurX, conCurY, 8, 16, window->highlightColour);
+void ConsoleDrawCursor(console_t* console, uint32_t x, uint32_t y){
+    
+    window_t* window = console->window;
+    
+    console->conCurX = (x*8)+4;
+    console->conCurY = (y*16)+22;
+    intuibase->DrawRectangle(window,console->conCurX, console->conCurY, 8, 16, window->highlightColour);
 }
 
-void ConsoleRedraw(window_t* window);
+void ConsoleRedraw(console_t* console);
 
 
-void ConsoleScroll(window_t* window){
+void ConsoleScroll(console_t* console){
     
+   // window_t* window = console->window;
     
-    if(bufferIndex >= 4095){
+    if(console->bufferIndex >= 4095){
         
         for(int i = 0 ; i< 2048;++i){
             
-            consoleBuffer[i] = consoleBuffer[i+2048];
+            console->consoleBuffer[i] = console->consoleBuffer[i+2048];
             
         }
         
-        bufferIndex = 2047;
+        console->bufferIndex = 2047;
         
     }
     
-    ConsoleRedraw(window);
+    ConsoleRedraw(console);
 }
 
 
 
-void ConsolePutCharPrivate(window_t* window, char character){
+void ConsolePutCharPrivate(console_t* console, char character){
+    
+    window_t* window = console->window;
     
     //Doesn't record the character placement in the console buffer
     
-    ConsoleClearCursor(window);
+    ConsoleClearCursor(console);
     
     if(character=='\n'){
-        ++y;
-        x=0;
+        ++console->y;
+        console->x=0;
         
-        if(y >= height){
-               ConsoleScroll(window);
+        if(console->y >= console->height){
+               ConsoleScroll(console);
                //y -= 1;
            }
         
     }else if(character=='\t'){
         
         //x = (x + 7) & 0xFFF8;
-        if(x%4){
-            x=x-1;
-            x=x/4;
-            x=x*4;
-            x=x+4;
+        if(console->x%4){
+            console->x=console->x-1;
+            console->x=console->x/4;
+            console->x=console->x*4;
+            console->x=console->x+4;
         }
         
     }else{
     
-        intuibase->PutChar(window,(x*8)+4,(y*16)+22,character,window->foregroundColour,window->backgroundColour);
+        intuibase->PutChar(window,(console->x*8)+4,(console->y*16)+22,character,window->foregroundColour,window->backgroundColour);
     
-        x++;
-        if(x>width){
-            y++;
+        console->x++;
+        if(console->x>console->width){
+            console->y++;
             
-            if(y >= height){
-                ConsoleScroll(window);
+            if(console->y >= console->height){
+                ConsoleScroll(console);
                 //y -= 1;
             }
             
-            x=0;
+            console->x=0;
         }
     
     }
-    ConsoleDrawCursor(window,x,y);
+    ConsoleDrawCursor(console,console->x,console->y);
 }
 
-void ConsolePutChar(window_t* window, char character){
+void ConsolePutChar(console_t* console, char character){
     
+   // window_t* window = console->window;
     
-    consoleBuffer[bufferIndex++] = character;
-    if(bufferIndex >= 4095){
+    console->consoleBuffer[console->bufferIndex++] = character;
+    if(console->bufferIndex >= 4095){
         
         for(int i = 0 ; i < 2048;++i){
             
-            consoleBuffer[i] = consoleBuffer[i+2048];
+            console->consoleBuffer[i] = console->consoleBuffer[i+2048];
             
         }
         
-        bufferIndex = 2048;
+        console->bufferIndex = 2048;
         
     }
     
     
-    ConsolePutCharPrivate(window, character);
+    ConsolePutCharPrivate(console, character);
 
     
 }
 
-bool windowClear = true;
 
-void ConsoleRedraw(window_t* window){
+
+void ConsoleRedraw(console_t* console){
  
+    window_t* window = console->window;
     
     //Count lines
     int32_t lines = 0;
@@ -154,7 +184,7 @@ void ConsoleRedraw(window_t* window){
     int32_t lineLength = 0;
     
     do{
-        c = consoleBuffer[i];
+        c = console->consoleBuffer[i];
         lineLength += 1;
         
         if(c =='\n'){
@@ -162,17 +192,17 @@ void ConsoleRedraw(window_t* window){
             lineLength = 0;
         }
         
-        if(lineLength >= width){
+        if(lineLength >= console->width){
             lines += 1;
             lineLength = 0;
         }
         
         i += 1;
-    }while(i<bufferIndex);
+    }while(i<console->bufferIndex);
     
-    if(lines >= height){
+    if(lines >= console->height){
     
-        uint32_t startline = lines - height;
+        uint32_t startline = lines - console->height;
 
         lines = 0;
         i = 0;
@@ -181,7 +211,7 @@ void ConsoleRedraw(window_t* window){
         uint32_t lineLength = 0;
     
         do{
-            c = consoleBuffer[i];
+            c = console->consoleBuffer[i];
             lineLength += 1;
         
             if(c =='\n'){
@@ -189,7 +219,7 @@ void ConsoleRedraw(window_t* window){
                 lineLength = 0;
             }
         
-            if((uint32_t)lineLength >= (uint32_t)width){
+            if((uint32_t)lineLength >= (uint32_t)console->width){
                 lines += 1;
                 lineLength = 0;
             }
@@ -201,38 +231,42 @@ void ConsoleRedraw(window_t* window){
         i = 0;
     }
     
-    x = 0;
-    y = 0;
+    console->x = 0;
+    console->y = 0;
     
-    if(windowClear == false){
+    if(console->windowClear == false){
         executive->Forbid(); //intuition doesn't lock the buffers properly for the clear window function
         intuibase->ClearWindow(window);
         executive->Permit();
     }
-    for(; i<bufferIndex;++i){
-        ConsolePutCharPrivate(window,consoleBuffer[i]);
+    for(; i<console->bufferIndex;++i){
+        ConsolePutCharPrivate(console,console->consoleBuffer[i]);
     }
 
 
     
-    windowClear = false;
+    console-> windowClear = false;
 }
 
-void ConsoleWriteString(window_t* window, char* str){
+void ConsoleWriteString(console_t* console, char* str){
+    
+   // window_t* window = console->window;
     
     uint32_t size = strlen(str);
     
     for (size_t i = 0; i < size; i++){
-        ConsolePutChar(window,str[i]);
+        ConsolePutChar(console,str[i]);
     }
     
     
 }
 
-void ConsoleWriteDec(window_t* window, uint32_t n){
+void ConsoleWriteDec(console_t* console, uint32_t n){
+    
+   // window_t* window = console->window;
     
     if (n == 0){
-         ConsolePutChar(window,'0');
+         ConsolePutChar(console,'0');
          return;
      }
      
@@ -254,16 +288,18 @@ void ConsoleWriteDec(window_t* window, uint32_t n){
          c2[i--] = c[j++];
      }
      
-    ConsoleWriteString(window, c2);
+    ConsoleWriteString(console, c2);
     
 }
 
 
-void ConsoleWriteHex(window_t* window, uint32_t n){
+void ConsoleWriteHex(console_t* console, uint32_t n){
     int32_t tmp;
      
+   // window_t* window = console->window;
+    
     // debug_write_string("0x");
-    ConsoleWriteString(window, "0x");
+    ConsoleWriteString(console, "0x");
     
      char noZeroes = 1;
      
@@ -278,47 +314,53 @@ void ConsoleWriteHex(window_t* window, uint32_t n){
          if (tmp >= 0xA){
              noZeroes = 0;
              //debug_putchar(tmp - 0xA + 'a');
-             ConsolePutChar(window,tmp - 0xA + 'a');
+             ConsolePutChar(console,tmp - 0xA + 'a');
          }else{
              noZeroes = 0;
              //debug_putchar(tmp + '0');
-             ConsolePutChar(window,tmp + '0');
+             ConsolePutChar(console,tmp + '0');
          }
      }
      
      tmp = n & 0xF;
      if (tmp >= 0xA){
          //debug_putchar(tmp - 0xA + 'a');
-         ConsolePutChar(window,tmp - 0xA + 'a');
+         ConsolePutChar(console,tmp - 0xA + 'a');
      }else{
          //debug_putchar(tmp + '0');
-         ConsolePutChar(window,tmp + '0');
+         ConsolePutChar(console,tmp + '0');
      }
    
 }
 
 
-void ConsoleBackSpace(window_t* window){
-    ConsoleClearCursor(window);
-    x -= 1;
-    bufferIndex -= 1;
+void ConsoleBackSpace(console_t* console){
     
-    if(x<0){
-        x = width;
-        y -= 1;
+   // window_t* window = console->window;
+    
+    ConsoleClearCursor(console);
+    console->x -= 1;
+    console->bufferIndex -= 1;
+    
+    if(console->x<0){
+        console->x = console->width;
+        console->y -= 1;
     }
-    ConsoleDrawCursor(window,x,y);
+    ConsoleDrawCursor(console,console->x,console->y);
 }
 
 
-void ConsoleSize(window_t* window){
-    width = (window->innerW / 8) - 2;
-    height = ((window->innerH - 22) / 16) - 1;
+void ConsoleSize(console_t* console){
+    
+    window_t* window = console->window;
+    
+    console->width = (window->innerW / 8) - 2;
+    console->height = ((window->innerH - 22) / 16) - 1;
 }
 
-void ConsoleMoveCursorX(window_t* console, int rx){
-
-    while(x<rx){
+void ConsoleMoveCursorX(console_t* console, int rx){
+    
+    while(console->x<rx){
         ConsolePutChar(console,' ');
     }
     
@@ -382,44 +424,261 @@ int outputee(){
 */
 
 
+void clockDrawFace(intuition_t* intuibase, window_t* win,int ticks, float* x, float* y){
+        
+    int minuteMarker = ticks / 60;
+    int hourMarker = ticks / 12;
+    
+    //DrawFace
+    executive->Forbid();    //we don't save the FPU registers yet... so we can't context switch in the middle of this
+    intuibase->DrawCircle(win,100,125,90,intuition.black,false);
+    intuibase->DrawCircle(win,100,125,89,intuition.black,false);
+    intuibase->FloodFill(win,100,125,intuition.white);
+        
+    int tx1 = 0;
+    int ty1 = 0;
+
+    int tx2 = 0;
+    int ty2 = 0;
+
+    int tx3 = 0;
+    int ty3 = 0;
+
+    int tx4 = 0;
+    int ty4 = 0;
+    
+    for(int i = 0;i<ticks;++i){
+        
+        if(i%minuteMarker == 0){
+            
+            if(i%hourMarker == 0){
+                
+
+                
+                if(i==0){
+                    tx1 = (x[ticks-4]*83)+100;
+                    ty1 = (y[ticks-4]*83)+125;
+                }else{
+                    tx1 = (x[i-3]*83)+100;
+                    ty1 = (y[i-3]*83)+125;
+                }
+                
+                tx2 = (x[i]*88)+100;
+                ty2 = (y[i]*88)+125;
+                
+                tx3 = (x[i+3]*83)+100;
+                ty3 = (y[i+3]*83)+125;
+                
+                tx4 = (x[i]*78)+100;
+                ty4 = (y[i]*78)+125;
+                
+                intuibase->DrawLine(win,tx1,ty1,tx2,ty2,intuibase->black);
+                intuibase->DrawLine(win,tx2,ty2,tx3,ty3,intuibase->black);
+                intuibase->DrawLine(win,tx3,ty3,tx4,ty4,intuibase->black);
+                intuibase->DrawLine(win,tx4,ty4,tx1,ty1,intuibase->black);
+                
+                int ax = (tx1 + tx3)/2;
+                int ay = (ty2 + ty4)/2;
+                intuibase->FloodFill(win,ax,ay,intuibase->black);
+                
+                
+                
+                
+            }else{
+                intuibase->DrawLine(win,(x[i]*80)+100,(y[i]*80)+125,(x[i]*90)+100,(y[i]*90)+125,intuibase->black);
+            }
+            
+        }
+        
+    }
+    executive->Permit();
+}
+
+void clockDrawHand(intuition_t* intuibase, window_t* win,int ticks,int pos,int len, int wid, float* x, float* y, uint32_t colour){
+    
+    
+    int tx1 = 0;
+    int ty1 = 0;
+
+    int tx2 = 0;
+    int ty2 = 0;
+
+    int tx3 = 0;
+    int ty3 = 0;
+
+    int tx4 = 0;
+    int ty4 = 0;
+    
+    int sho = len - 16;
+    
+    if(pos==0){
+        tx1 = (x[(ticks-wid)-1]*sho)+100;
+        ty1 = (y[(ticks-wid)-1]*sho)+125;
+    }else{
+        tx1 = (x[pos-4]*sho)+100;
+        ty1 = (y[pos-4]*sho)+125;
+    }
+    
+    tx2 = (x[pos]*len)+100;
+    ty2 = (y[pos]*len)+125;
+    
+    tx3 = (x[pos+wid]*sho)+100;
+    ty3 = (y[pos+wid]*sho)+125;
+    
+    tx4 = 100;
+    ty4 = 125;
+    
+    
+    
+    intuibase->DrawLine(win,tx1,ty1,tx2,ty2,colour);
+    intuibase->DrawLine(win,tx2,ty2,tx3,ty3,colour);
+    intuibase->DrawLine(win,tx3,ty3,tx4,ty4,colour);
+    intuibase->DrawLine(win,tx4,ty4,tx1,ty1,colour);
+    
+    int ax = (x[pos]*sho)+100;
+    int ay = (y[pos]*sho)+125;
+    intuibase->FloodFill(win,ax,ay,intuibase->black);
+    
+}
+
+void clockEraseHand(intuition_t* intuibase, window_t* win,int ticks,int pos,int len, int wid, float* x, float* y, uint32_t colour){
+
+    int tx1 = 0;
+    int ty1 = 0;
+
+    int tx2 = 0;
+    int ty2 = 0;
+
+    int tx3 = 0;
+    int ty3 = 0;
+
+    int tx4 = 0;
+    int ty4 = 0;
+    
+    int sho = len - 16;
+    
+    if(pos==0){
+        tx1 = (x[(ticks-wid)-1]*sho)+100;
+        ty1 = (y[(ticks-wid)-1]*sho)+125;
+    }else{
+        tx1 = (x[pos-4]*sho)+100;
+        ty1 = (y[pos-4]*sho)+125;
+    }
+    
+    tx2 = (x[pos]*len)+100;
+    ty2 = (y[pos]*len)+125;
+    
+    tx3 = (x[pos+wid]*sho)+100;
+    ty3 = (y[pos+wid]*sho)+125;
+    
+    tx4 = 100;
+    ty4 = 125;
+    
+    
+    int sx = tx1 < tx2 ? tx1 : tx2;
+    sx = sx  < tx3 ? sx  : tx3;
+    sx = sx  < tx4 ? sx  : tx4;
+    
+    int sy = ty1 < ty2 ? ty1 : ty2;
+    sy = sy  < ty3 ? sy  : ty3;
+    sy = sy  < ty4 ? sy  : ty4;
+    
+    
+    int mx = tx1 > tx2 ? tx1 : tx2;
+    mx = mx  > tx3 ? mx  : tx3;
+    mx = mx  > tx4 ? mx  : tx4;
+    
+    int my = ty1 > ty2 ? ty1 : ty2;
+    my = my  > ty3 ? my  : ty3;
+    my = my  > ty4 ? my  : ty4;
+    
+    intuibase->DrawRectangle(win,sx-1,sy-1,(mx-sx)+2,(my-sy)+2,colour);
+    
+}
+
+
+
 void clock(){
     
     intuition_t* intuibase =  (intuition_t*)executive->OpenLibrary("intuition.library",0);
     
     window_t* clockWin = intuibase->OpenWindow(NULL, 20, 20, 200, 250,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_CLOSE_GADGET,"Clock");
     
-    intuibase->DrawCircle(clockWin,100,125,90,intuition.black,false);
-    intuibase->DrawCircle(clockWin,100,125,89,intuition.black,false);
-    intuibase->DrawCircle(clockWin,100,125,88,intuition.black,false);
-    intuibase->FloodFill(clockWin,100,125,intuition.white);
-    
-    float count = -1.570796327;
-    float inc = 0.104719755;
-    
-    float x[60];
-    float y[60];
 
-    for(int i = 0;i<60;++i){
+
+
+    executive->Forbid();
+    int ticks = 480;
+    float count = -1.570796327;
+    float inc = (2*PI) / (float)ticks;
+    
+    
+    float* x = executive->AllocMem(sizeof(float)*ticks,0);
+    float* y = executive->AllocMem(sizeof(float)*ticks,0);
+
+    for(int i = 0;i<ticks;++i){
         y[i] = sin(count);
         x[i] = cos(count);
         count += inc;
     }
+    executive->Permit();
+    
 
+    
+    clockDrawFace(intuibase,clockWin,ticks,x,y);
+
+    
+    int hour = 0;
+    int minute = 0;
+    int minuteMarker = ticks / 60;
+    int hourMarker = ticks / 12;
+
+    int waitTime = (int)(1000.0 *(60.0/(float)ticks));
     int i = 0;
     while(1){
         
-        int y2 = (int)(y[i]*80.0);
-        int x2 = (int)(x[i]*80.0);
-        intuibase->DrawLine(clockWin,100,125,x2+100,y2+125,intuibase->orange);
+        executive->Forbid();    //we don't save the FPU registers yet... so we can't context switch in the middle of this
+        int y2 = (int)(y[i]*74.0);
+        int x2 = (int)(x[i]*74.0);
+        executive->Permit();
+        
+
         
         i++;
-        if(i>59){i=0;}
+        if(i>(ticks-1)){
+            
+            minute += minuteMarker;
+            
+            if(minute>(ticks - minuteMarker)){
+                minute = 0;
+                hour +=hourMarker;
+                
+                if(hour>(ticks - hourMarker)){
+                    hour = 0;
+                }
+            }
+            
+            i=0;
+        }
         
-        WaitMS(1000);
+
+        clockDrawHand(intuibase,clockWin,ticks,minute,74,4,x,y,intuibase->black);
+        clockDrawHand(intuibase,clockWin,ticks,hour,55,6,x,y,intuibase->black);
+        intuibase->DrawLine(clockWin,100,125,x2+100,y2+125,intuibase->orange);
+        
+        WaitMS(waitTime);
+        //WaitMS(1);
         intuibase->DrawLine(clockWin,100,125,x2+100,y2+125,intuibase->white);
+        clockEraseHand(intuibase,clockWin,ticks,hour,55,6,x,y,intuibase->white);
+        clockEraseHand(intuibase,clockWin,ticks,minute,74,4,x,y,intuibase->white);
+
     }
     
 }
+
+
+
+
 
 int over(){
     
@@ -671,14 +930,9 @@ void bouncy(){
 
 
 // Command Interpretor ***************************************************************
-dos_t* dosbase;
-window_t* console;
-uint32_t commandBufferIndex = 0;
-char commandBuffer[512];
-char lastCommand[512];
+//This really should be a seprate task from the console, which should be managed by the console device.
 
-
-void reportError(char** arguments){
+void reportError(console_t* console, char** arguments){
     
     //debug_write_string("Reporting Error");
     //window_t* req;
@@ -730,18 +984,19 @@ void reportError(char** arguments){
     }
 }
 
-void processCommand(int commandLength){
+void processCommand(console_t* console, int commandLength){
     
+    dos_t* dosbase = console->dosbase;
     //debug_write_string("process command\n");
     
     //save last command
-    strcpy(lastCommand, commandBuffer);
+    strcpy(console->lastCommand, console->commandBuffer);
     
     //debug_write_string("saved buffer\n");
     
     //remove leading spaces
     int start = 0;
-    while(commandBuffer[start] == ' ' && start < commandLength){
+    while(console->commandBuffer[start] == ' ' && start < commandLength){
         start++;
     }
     
@@ -749,7 +1004,7 @@ void processCommand(int commandLength){
     int count = 1;  // there is alwasy one argument if we get to the process buffer stage
     for(int i=start;i<commandLength;++i){
         
-        if(commandBuffer[i]==' ' && (commandBuffer[i+1]!=' ' && commandBuffer[i+1]!=0) ){
+        if(console->commandBuffer[i]==' ' && (console->commandBuffer[i+1]!=' ' && console->commandBuffer[i+1]!=0) ){
             count++;
         }
     }
@@ -757,22 +1012,25 @@ void processCommand(int commandLength){
     //create an argument pointer array
     char* arguments[count];
     
-    arguments[0] = &commandBuffer[start];
+    arguments[0] = &console->commandBuffer[start];
     int pos = 0;
     for(int i = start;i<commandLength;++i){
         
-        if(commandBuffer[i]==' ' && (commandBuffer[i+1]!=' ' && commandBuffer[i+1]!=0) ){
+        if(console->commandBuffer[i]==' ' && (console->commandBuffer[i+1]!=' ' && console->commandBuffer[i+1]!=0) ){
             pos++;
-            commandBuffer[i]=0;
-            arguments[pos] = &commandBuffer[i + 1];
-        }else if(commandBuffer[i]==' '){
-            commandBuffer[i]=0; // null terminate the argument
+            console->commandBuffer[i]=0;
+            arguments[pos] = &console->commandBuffer[i + 1];
+        }else if(console->commandBuffer[i]==' '){
+            console->commandBuffer[i]=0; // null terminate the argument
         }
         
     }
     
+    
+    
+    
     //disply the available devices, and add assigns
-    if(strcmp(commandBuffer,"assign") == 0){
+    if(strcmp(arguments[0],"assign") == 0){
 
         ConsoleWriteString(console,"Devices:\n");
         
@@ -790,7 +1048,7 @@ void processCommand(int commandLength){
     
     
     //Need to set the current directory
-    if(strcmp(commandBuffer,"cd") == 0){
+    if(strcmp(arguments[0],"cd") == 0){
 
 
 
@@ -814,7 +1072,7 @@ void processCommand(int commandLength){
 
         
         if(file == NULL){
-            reportError(arguments); //print the Dos Error
+            reportError(console, arguments); //print the Dos Error
             return;
         }
         
@@ -854,7 +1112,7 @@ void processCommand(int commandLength){
     }
     
     
-    if(strcmp(commandBuffer,"avail") == 0){
+    if(strcmp(arguments[0],"avail") == 0){
         
         uint64_t a = executive->allocationTotal / 1024;// / 1024;
         uint64_t d = executive->deallocationTotal / 2024;// / 1024;
@@ -867,13 +1125,13 @@ void processCommand(int commandLength){
     }
     
     
-    if(strcmp(commandBuffer,"debug") == 0){
+    if(strcmp(console->commandBuffer,"debug") == 0){
         executive->debug_show();
         return;
     }
     
     //messy way to implment the dir command :-)
-    if(strcmp(commandBuffer,"dir") == 0){
+    if(strcmp(console->commandBuffer,"dir") == 0){
         //debug_write_string("Dir!\n");
             
         file_t* file;
@@ -886,76 +1144,82 @@ void processCommand(int commandLength){
         
             file = dosbase->Open(arguments[1],0);
         }
+        
+        //debug_write_string("Opened!\n");
+        
+        if(file == NULL){
             
-            if(file == NULL){
-            
-                reportError(arguments); //print the Dos Error
+            reportError(console, arguments); //print the Dos Error
                 
-            }else{
+        }else{
                 
-                directoryStruct_t* ds = dosbase->Examine(file);
+            //debug_write_string("Prepare to examine... ");
+            directoryStruct_t* ds = dosbase->Examine(file);
+            //debug_write_string("Examined!\n");
                 
-                if(ds==NULL){
+            if(ds==NULL){
                     
-                    switch(executive->thisTask->dosError){
-                        case DOS_ERROR_NOT_A_DIRECTORY:
-                            ConsoleWriteString(console,"Not a directory!\n");
-                            break;
+                switch(executive->thisTask->dosError){
+                    case DOS_ERROR_NOT_A_DIRECTORY:
+                        ConsoleWriteString(console,"Not a directory!\n");
+                        break;
                             
-                        default:
-                            ConsoleWriteString(console,"Um... An error occured!\n");
-                            break;
+                    default:
+                        ConsoleWriteString(console,"Um... An error occured!\n");
+                        break;
                             
-                    }
-                    return;
-                    
                 }
+                return;
+                    
+            }
                 
-                //Print directory using the returned structure
-                directoryEntry_t* dt = ds->entry;
+
+            
+            //Print directory using the returned structure
+            directoryEntry_t* dt = ds->entry;
 
                 
-                for(uint32_t i = 0;i<ds->size;i++){
+            for(uint32_t i = 0;i<ds->size;i++){
                     
-                    //Hide hidden
-                    if(dt[i].isHidden){
-                        continue;
-                    }
-                    
-                    ConsoleWriteString(console,"   ");
-                    ConsoleWriteString(console,dt[i].name);
-                    ConsoleMoveCursorX(console,32);
-                    
-                    
-                    if(dt[i].isDir){
-                        ConsoleWriteString(console,"(dir)");
-                    }else{
-                        ConsoleWriteDec(console,dt[i].fileSize);
-                    }
-                    
-                    //ConsoleWriteString(console," | Cluster: ");
-                    //ConsoleWriteDec(console,dt[i].cluster);
-                    
-                    if(dt[i].isHidden){
-                        ConsoleWriteString(console," (Hidden)");
-                    }
-                    
-                    ConsolePutChar(console,'\n');
-                    executive->Reschedule();    //slow the update rate down
+                //Hide hidden
+                if(dt[i].isHidden){
+                    continue;
                 }
-                executive->FreeMem(ds);//free the directory structure returned by Examine()
                 
-                dosbase->Close(file);
+                ConsoleWriteString(console,"   ");
+                ConsoleWriteString(console,dt[i].name);
+                ConsoleMoveCursorX(console,32);
+                    
+                    
+                if(dt[i].isDir){
+                    ConsoleWriteString(console,"(dir)");
+                }else{
+                    ConsoleWriteDec(console,dt[i].fileSize);
+                }
+                    
+                //ConsoleWriteString(console," | Cluster: ");
+                //ConsoleWriteDec(console,dt[i].cluster);
+                    
+                if(dt[i].isHidden){
+                    ConsoleWriteString(console," (Hidden)");
+                }
+                    
+                ConsolePutChar(console,'\n');
+                executive->Reschedule();    //slow the update rate down
             }
+            executive->FreeMem(ds);//free the directory structure returned by Examine()
+                
+            dosbase->Close(file);
+        }
             
-            ConsolePutChar(console,'\n');
+        ConsolePutChar(console,'\n');
             
         return;
         
     }
     
     //An odd way to implment the echo command :-)
-    if(strcmp(commandBuffer,"echo") == 0){
+    if(strcmp(arguments[0],"echo") == 0){
         
         if(count > 1){
            // ConsoleWriteString(console,"Openning file:\n");
@@ -963,7 +1227,7 @@ void processCommand(int commandLength){
             
             if(file == NULL){
                 
-                reportError(arguments); //print the Dos Error
+                reportError(console, arguments); //print the Dos Error
                 
             }else{
             
@@ -976,7 +1240,7 @@ void processCommand(int commandLength){
                 ConsoleWriteString(console," Echoing file:\n");
                 uint8_t* temp = dosbase->LoadFile(file);
 
-                intuibase->SetBusy(console, true); //if the window can't process any events let the user know
+                intuibase->SetBusy(console->window, true); //if the window can't process any events let the user know
                 for(uint64_t i=0; i < file->size; ++i){
                     ConsolePutChar(console,temp[i]);
                     
@@ -985,7 +1249,7 @@ void processCommand(int commandLength){
                     }
                   
                 }
-                intuibase->SetBusy(console, false); //user can do things again.
+                intuibase->SetBusy(console->window, false); //user can do things again.
                 
                 ConsoleWriteString(console,"\n");
                 executive->FreeMem(temp);
@@ -1000,7 +1264,7 @@ void processCommand(int commandLength){
     }
     
     //A quick way to crash the machine
-    if(strcmp(commandBuffer,"guru") == 0){
+    if(strcmp(arguments[0],"guru") == 0){
         volatile char i = 0;
         char j = 128;
         char c = j / i;
@@ -1009,9 +1273,12 @@ void processCommand(int commandLength){
     }
     
     //A quick way to crash the machine
-    if(strcmp(commandBuffer,"help") == 0){
+    if(strcmp(arguments[0],"help") == 0){
         ConsoleWriteString(console," Supported Commands:\n");
+        ConsoleWriteString(console,"   assign - show the currently mounted devices.\n");
+        ConsoleWriteString(console,"   avail - show the amount of free RAM... listfree is more useful.\n");
         ConsoleWriteString(console,"   cd   (Usage: cd path) - changes the current path.\n");
+        ConsoleWriteString(console,"   cli - opens a new CLI window.\n");
         ConsoleWriteString(console,"   debug - show debugging console.\n");
         ConsoleWriteString(console,"   dir  (Usage: dir path) - lists files at the path.\n");
         ConsoleWriteString(console,"   echo (Usage: echo filename) - echos the contents of a file to the console.\n");
@@ -1024,7 +1291,7 @@ void processCommand(int commandLength){
     }
     
     //Load an ELF executable :-)
-    if(strcmp(commandBuffer,"load") == 0){
+    if(strcmp(arguments[0],"load") == 0){
         
         if(count > 1){
            // ConsoleWriteString(console,"Openning file:\n");
@@ -1032,7 +1299,7 @@ void processCommand(int commandLength){
             
             if(file == NULL){
                 
-                reportError(arguments); //print the Dos Error
+                reportError(console, arguments); //print the Dos Error
                 
             }else{
             
@@ -1065,7 +1332,7 @@ void processCommand(int commandLength){
     }
     
     //Load an ELF Relocatable Object :-)
-    if(strcmp(commandBuffer,"run") == 0){
+    if(strcmp(arguments[0],"run") == 0){
         
         if(count > 1){
            // ConsoleWriteString(console,"Openning file:\n");
@@ -1073,7 +1340,7 @@ void processCommand(int commandLength){
             
             if(file == NULL){
                 
-                reportError(arguments); //print the Dos Error
+                reportError(console, arguments); //print the Dos Error
                 
             }else{
             
@@ -1116,43 +1383,50 @@ void processCommand(int commandLength){
     
     
     // THese three theming commands don't really work as intution isn't set up for runtime theme swapping yet.
-    if(strcmp(commandBuffer,"themenew") == 0){
+    if(strcmp(arguments[0],"themenew") == 0){
         intuibase->SetTheme(1);
         ConsoleWriteString(console,"AmigaOS 3.1 theme\n");
         return;
     }
     
-    if(strcmp(commandBuffer,"themeold") == 0){
+    if(strcmp(arguments[0],"themeold") == 0){
         intuibase->SetTheme(0);
         ConsoleWriteString(console,"AmigaOS 1.3 theme\n");
         return;
     }
     
-    if(strcmp(commandBuffer,"thememac") == 0){
+    if(strcmp(arguments[0],"thememac") == 0){
         intuibase->SetTheme(2);
         ConsoleWriteString(console,"Classic Mac theme\n");
         return;
     }
     
-    if(strcmp(commandBuffer,"a") == 0){
+    if(strcmp(arguments[0],"a") == 0){
         task_t* t = executive->AddTask(clock,4096,0);
         t->node.name = "clock";
         return;
     }
   
-    if(strcmp(commandBuffer,"b") == 0){
+    if(strcmp(arguments[0],"b") == 0){
         task_t* t = executive->AddTask(over,4096,0);
         t->node.name = "Over!";
         return;
     }
  
-    if(strcmp(commandBuffer,"c") == 0){
+    if(strcmp(arguments[0],"c") == 0){
         task_t* t =  executive->AddTask(bouncy,4096,0);
         t->node.name = "Bouncy!";
         return;
     }
     
-    if(strcmp(commandBuffer,"listfree") == 0){
+    
+    if(strcmp(arguments[0],"cli") == 0){
+        task_t* t =  executive->AddTask(CliEntry,4096,0);
+        t->node.name = "CLI";
+        return;
+    }
+    
+    if(strcmp(arguments[0],"listfree") == 0){
         
 
         
@@ -1232,32 +1506,38 @@ int CliEntry(void){
     
     executive->thisTask->parent = NULL; //CLI should have no parent task, upon execution a task should check and see if it has a parent, if it doesn't then then that means it hasn't been detached from CLI and may use the CLI for it's I/O. If a task does have a parent then it must set up it's own I/O.
     
-    //The Boot Task should be responsible for loading the initial Libraries and devices into memory.
+    //set the progdir to the boot disk
+    executive->thisTask->progdir = executive->AllocMem(5,0); //need 5 bytes, the name plus null
+    strcpy(executive->thisTask->progdir,"dh0:");
+    
+    console_t* console = executive->AllocMem(sizeof(console_t),0);
+    console->commandBufferIndex = 0;
+    
+    for(int i=0;i<4096;++i){
+        console->consoleBuffer[i] = 0;
+    }
+    console->bufferIndex = 0;
+    
+    console->windowClear = true;
     
     
-        
-    //setup the ata device as early as possible before the DOS Library
-    LoadATADevice();
-    executive->AddDevice((device_t*)&ata);
-  
-    //The boot disk will be FAT32, so load the FAT Handler
-    LoadFATHandler();
-    executive->AddDevice((device_t*)&fatHandler);
     
     
     intuibase = (intuition_t*) executive->OpenLibrary("intuition.library",0);
     
     //console = intuibase->OpenWindowPrivate(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight/2)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE, "BootShell");
     
-    console = intuibase->OpenWindow(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE | WINDOW_KEYBOARD, "BootShell");
+    console->window = intuibase->OpenWindow(NULL,0,22,intuibase->screenWidth,(intuibase->screenHeight)-24,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET | WINDOW_RESIZABLE | WINDOW_KEYBOARD, "BootShell");
+    intuibase->Focus(console->window);
     
-    console->eventPort = executive->CreatePort("Event Port");
+    
+    console->window->eventPort = executive->CreatePort("Event Port");
 
     ConsoleSize(console);
-    x = 0;
-    y = 0;
-    conCurX = (x*8)+4;
-    conCurY = (y*16)+22;
+    console->x = 0;
+    console->y = 0;
+    console->conCurX = (console->x*8)+4;
+    console->conCurY = (console->y*16)+22;
 
      // This bootshell task, this should be responsible for much of the system set up
     
@@ -1269,9 +1549,7 @@ int CliEntry(void){
  
     
     //Initilise and open DOS library
-    LoadDOSLibrary();   //Load DOS Library into memory (already done here) and call its "LoadXLibrary()" function
-    executive->AddLibrary((library_t*)&dos);    // add DOS to the Exec library list.
-    dosbase = (dos_t*) executive->OpenLibrary("dos.library",0);    // never use a library without opening it first
+    console->dosbase = (dos_t*) executive->OpenLibrary("dos.library",0);    // never use a library without opening it first
 
     
     debug_write_string("CLI MESSAGE: Type help for available commands.\n");
@@ -1279,14 +1557,15 @@ int CliEntry(void){
     while(1){
         
         //debug_write_string("BootShell: Wait Event\n");
-        executive->WaitPort(console->eventPort);
-        intuitionEvent_t* event = (intuitionEvent_t*) executive->GetMessage(console->eventPort);
+        
+        executive->WaitPort(console->window->eventPort);
+        intuitionEvent_t* event = (intuitionEvent_t*) executive->GetMessage(console->window->eventPort);
     
         while(event != NULL){
         
             if(event->flags & WINDOW_EVENT_RESIZE){
-                intuibase->ResizeWindow(console, console->w - event->mouseXrel, console->h - event->mouseYrel);
-                windowClear = true; //window is alwasy clear after a resize event!
+                intuibase->ResizeWindow(console->window, console->window->w - event->mouseXrel, console->window->h - event->mouseYrel);
+                console->windowClear = true; //window is alwasy clear after a resize event!
                 ConsoleSize(console);
             }
             
@@ -1302,40 +1581,41 @@ int CliEntry(void){
                     if(event->rawKey == 0xE){
                         //delete key
                         
-                        if(commandBufferIndex > 0){
-                            commandBufferIndex -=1;
+                        if(console->commandBufferIndex > 0){
+                            console->commandBufferIndex -=1;
                             ConsoleBackSpace(console);
                         }
                         
                     }else if(event->rawKey == 0x1C){
                         // enter key
                         ConsolePutChar(console,'\n');   // newline as enter has been pressed
-                        commandBuffer[commandBufferIndex]= 0; // append a NULL to the command buffer
+                        console->commandBuffer[console->commandBufferIndex]= 0; // append a NULL to the command buffer
 
                         
-                        if(commandBufferIndex>0){
+                        if(console->commandBufferIndex>0){
                             
-                           processCommand(commandBufferIndex);
+                           processCommand(console, console->commandBufferIndex);
                 
                         }
                         
-
-                        commandBufferIndex  = 0;
+                        console->commandBufferIndex  = 0;
                         ConsoleWriteString(console,"1> ");
+                        
                     }else if(event->rawKey == 0x48){
                         //up cursor
                         
                         //Delete current line
-                        while(commandBufferIndex>0){
-                            commandBufferIndex -=1;
+                        while(console->commandBufferIndex>0){
+                            console->commandBufferIndex -=1;
                             ConsoleBackSpace(console);
                         }
                         
+                        //copy command
                         int i = 0;
-                        while(lastCommand[i] != 0){
-                            commandBuffer[commandBufferIndex] = lastCommand[i];
-                            commandBufferIndex += 1;
-                            ConsolePutChar(console, lastCommand[i]);
+                        while(console->lastCommand[i] != 0){
+                            console->commandBuffer[console->commandBufferIndex] = console->lastCommand[i];
+                            console->commandBufferIndex += 1;
+                            ConsolePutChar(console, console->lastCommand[i]);
                             i++;
                         }
                             
@@ -1343,9 +1623,9 @@ int CliEntry(void){
                         
                         
                     }else{
-                        if(commandBufferIndex < 255){
-                            commandBuffer[commandBufferIndex] = event->scancode;
-                            commandBufferIndex += 1;
+                        if(console->commandBufferIndex < 255){
+                            console->commandBuffer[console->commandBufferIndex] = event->scancode;
+                            console->commandBufferIndex += 1;
                             ConsolePutChar(console, event->scancode);
                         }
                     }
@@ -1356,7 +1636,7 @@ int CliEntry(void){
             
             executive->ReplyMessage((message_t*)event); // Always reply a message as soon as possible
             //get next message
-            event = (intuitionEvent_t*) executive->GetMessage(console->eventPort);
+            event = (intuitionEvent_t*) executive->GetMessage(console->window->eventPort);
         }
     
     }

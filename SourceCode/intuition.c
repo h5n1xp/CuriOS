@@ -245,6 +245,13 @@ void updateMouse(){
         
         return;
     }else{
+        
+        //This code restores the dragging gadget image stage to normal if any thingg weird happens
+        if(gadgetUnder != NULL){
+            gadgetUnder->state = GADGET_STATE_NORMAL;
+            gadgetUnder->Draw(gadgetUnder);
+        }
+        
         leftMouseHeld = false;
         gadgetUnder=NULL;
         
@@ -733,6 +740,9 @@ void IntuitionUpdate(void){
         if(window->needsRedraw == true){
             RedrawBlitRects(window);
         }
+        //else{
+        //    graphics.DrawRect(&graphics.frameBuffer, window->x,window->y,80,80,intuition.orange);
+        //}
         
         
         node = node->prev;

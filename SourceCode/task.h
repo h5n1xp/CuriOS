@@ -13,6 +13,7 @@
 
 #define GURU_MEDITATION_NO_ERROR        0
 #define GURU_MEDITATION_OUT_OF_MEMORY   1
+#define GURU_RECOVERABLE_FLAG          -1 //not really thought out yet, but some errors should not lock up the task...
 
 
 #define TASK_SUSPENDED 0
@@ -25,6 +26,8 @@
 typedef struct task_t task_t;
 struct task_t{
     node_t node;
+    int32_t affinity;   // CPU number which this task must be scheduled to run on, or -1 for any CPU.
+    uint32_t type;      // CPU type, FPU flag etc, also useful for hetrogenius cores, some Tasks may need high perforamce cores
     uint64_t state;     // i.e. TASK_READY
     uint64_t guru;      // Kernel Error Code, i.e. 1. Out Of Memory
     task_t* parent;
