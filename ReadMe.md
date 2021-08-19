@@ -5,6 +5,7 @@ The Zip files here are the bootable raw hard disk image (and a VDI for VirtualBo
 The command shell currently supports a few commands, type help for a full list.
 
 Three example programs are included on the boot disk, called prog.elf, draw.elf, and clock.elf
+-Warning- The Kernal API is currently in flux, so you will likely need to recompile programs between kernel updates at this time.
 
 The graphical user interface can be "themed", in the style of one of three built in themes, which can be selected at compile time to suit the user's preference. To set the theme, change the guiTheme variable in the intuition.c file to either THEME_OLD, THEME_NEW, or THEME_MAC.
 
