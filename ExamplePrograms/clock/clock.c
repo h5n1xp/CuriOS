@@ -331,7 +331,6 @@ void main(){
     
     //return 0;
 
-    executive->thisTask->state = TASK_ENDED;
-    running = running / 0;  // pursposely crash the task.
+    executive->RemTask(NULL);   //remove self
     
 }
