@@ -302,6 +302,7 @@ void Signal(task_t* task,uint64_t signals){   //signal a task
 
 uint64_t Wait(uint64_t signal){               //wait for a signal
  
+    uint64_t temp = executive->elapsed;
     executive->elapsed = 200;    //force the rescheduler to not reschedule but putting some stupid high value
     
     task_t* task = executive->thisTask;
@@ -314,7 +315,7 @@ uint64_t Wait(uint64_t signal){               //wait for a signal
     }
 
     //returning from a signal
-    
+    executive->elapsed = temp;    //continue the task's time slice
     uint64_t sig = task->signalReceived & task->signalWait; // which signals woke the task?
     task->signalReceived ^= sig; // clear the waking signals
     

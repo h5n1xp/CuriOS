@@ -10,7 +10,7 @@
 
 
 
-const char VERSTAG[] = "\0$VER: CuriOS 0.46a (10/08/2021) by Matt Parsons";
+const char VERSTAG[] = "\0$VER: CuriOS 0.47a (06/09/2021) by Matt Parsons";
 
 
 

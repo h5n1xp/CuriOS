@@ -1599,7 +1599,7 @@ int CliEntry(void){
     
     ConsoleWriteString(console,"Copyright ");
     ConsolePutChar(console,169);
-    ConsoleWriteString(console,"2021 Matt Parsons.\nAll rights reserved.\nRelease 0.46a\n\n");
+    ConsoleWriteString(console,"2021 Matt Parsons.\nAll rights reserved.\nRelease 0.47a\n\n");
     
 
  
