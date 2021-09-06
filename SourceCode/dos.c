@@ -204,7 +204,7 @@ file_t* Open(char* fileName, uint64_t attributes){
     
     //need to Open the underlying device, likely the ata.device
     //save the IORequest into the file_t structure.
-    file_t* file = (file_t*)executive->Alloc(sizeof(file_t));
+    file_t* file = (file_t*)executive->Alloc(sizeof(file_t),0);
     file->node.type = NODE_FILE_DESCRIPTOR;
     file->request = executive->CreateIORequest(executive->thisTask->dosPort, sizeof(ioRequest_t));
     file->entry = entry;
@@ -519,7 +519,7 @@ void InitDOS(library_t* library){
     //debug_write_string("DOS Library: Setting up hard disk device... dh0: \n");
     
     //Add a FAT file system handler to DOS, which sits on top of the ATA device, first partition.
-    node_t* node                    = executive->Alloc(sizeof(dosEntry_t));
+    node_t* node                    = executive->Alloc(sizeof(dosEntry_t),0);
     node->type                      = NODE_DOS_ENTRY;
     node->name                      = "dh0";
     dosEntry_t* bootDOSEntry        = (dosEntry_t*)node;

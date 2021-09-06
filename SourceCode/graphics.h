@@ -93,13 +93,15 @@ typedef struct{
     void (*SetColour)(palette_t* palette,uint32_t colour, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
     colour_t (*GetColour)(palette_t* palette, uint32_t colour);
     
+    void (*ChangeFrameBufferPrivate)(void* address,uint32_t width, uint32_t height, uint32_t bpp);
+    
 }graphics_t;
 
 
 extern graphics_t graphics;
 
 
-void LoadGraphicsLibrary(multiboot_info_t* mbd);
+void LoadGraphicsLibrary();
 
 
 #endif /* graphics_h */

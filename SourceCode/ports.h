@@ -12,6 +12,9 @@
 #include "list.h"
 #include "task.h"
 
+#define MSGPORT_FLAG_SIGNAL    0    // Signal owning task - default action
+#define MSGPORT_FLAG_IGNORE    2    // Ignore arrival
+
 typedef struct{
     node_t node;
     task_t* owner;

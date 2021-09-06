@@ -109,7 +109,7 @@ void InitTimer(uint32_t frequency){
 
 void WaitMS(uint64_t time){
     
-    simpleTimerNode_t* node = (simpleTimerNode_t*)executive->Alloc(sizeof(simpleTimerNode_t));
+    simpleTimerNode_t* node = (simpleTimerNode_t*)executive->Alloc(sizeof(simpleTimerNode_t),0);
     if(node == NULL){
         return;
     }

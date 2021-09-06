@@ -130,7 +130,7 @@ void ConsolePutCharPrivate(console_t* console, char character){
     }else{
     
         intuibase->PutChar(window,(console->x*8)+4,(console->y*16)+22,character,window->foregroundColour,window->backgroundColour);
-    
+        executive->Reschedule();//***************************************************************************************************SLOW THIS RIGHT DOWN!!
         console->x++;
         if(console->x>console->width){
             console->y++;
@@ -261,7 +261,7 @@ void ConsoleWriteString(console_t* console, char* str){
     
 }
 
-void ConsoleWriteDec(console_t* console, uint32_t n){
+void ConsoleWriteDec(console_t* console, int32_t n){
     
    // window_t* window = console->window;
     
@@ -269,18 +269,34 @@ void ConsoleWriteDec(console_t* console, uint32_t n){
          ConsolePutChar(console,'0');
          return;
      }
+    
+    //Handle negative numbers
+    bool negative = false;
+    if(n<0){negative = true;}
+    
+    n = abs(n);
      
-     int32_t acc = n;
-     char c[32];
-     int i = 0;
+    int32_t acc = n;
+    char c[32];
+    
+    int i = 0;
+        
      while (acc > 0){
          c[i] = '0' + acc%10;
          acc /= 10;
          i++;
      }
      
-     c[i] = 0;
+ 
+
      
+    if(negative==true){
+        c[i] = '-';
+        i += 1;
+    }
+    
+    c[i] = 0;
+    
      char c2[32];
      c2[i--] = 0;
      int j = 0;
@@ -373,7 +389,7 @@ void ConsoleMoveCursorX(console_t* console, int rx){
 
 
 
-
+char strClockTaskName[] = "clock";
 
 
 //DEBUGGING TASKS!!!!!
@@ -915,9 +931,8 @@ void bouncy(){
     
     //return 0;
 
-    executive->thisTask->state = TASK_ENDED;
-    volatile int endVar = 0;
-    running = running / endVar;  // pursposely crash the task.
+    //remove self
+    executive->RemTask(NULL);
     
 }
 
@@ -1286,6 +1301,7 @@ void processCommand(console_t* console, int commandLength){
         ConsoleWriteString(console,"   help (Usage: help) - prints this help.\n");
         ConsoleWriteString(console,"   load (Usage: load filename) - loads an ELF executable into memory... and execute it (does not detach task from CLI!)\n");
         ConsoleWriteString(console,"   listfree - list free memory blocks.\n");
+        ConsoleWriteString(console,"   listtasks - list tasks currently running on the system.\n");
         ConsoleWriteString(console,"   run (Usage: run filename) - loads an ELF executable into memory... and runs it (detaches task from CLI!)\n");
         return;
     }
@@ -1357,7 +1373,9 @@ void processCommand(console_t* console, int commandLength){
                     return;
                 }
                 
-                task_t* task =  executive->AddTask(tmp.entry,4096,0);
+                task_t* task =  executive->CreateTask("PlaceHolder",0,tmp.entry,4096);
+                executive->AddTask(task);
+                //task_t* task =  executive->AddTask(tmp.entry,4096,0);
                 
                 //remove the memory segment from this task's memory list and add it to the task's memory list
                 //All allocations relating to a task must be recorded in the task's own structure
@@ -1402,27 +1420,39 @@ void processCommand(console_t* console, int commandLength){
     }
     
     if(strcmp(arguments[0],"a") == 0){
-        task_t* t = executive->AddTask(clock,4096,0);
-        t->node.name = "clock";
+        
+        executiveRequest_t* test = (executiveRequest_t*)executive->Alloc(sizeof(executiveRequest_t),0);
+        
+        test->message.replyPort = NULL;
+        test->caller = executive->thisTask;
+        test->request = EXEC_REQUEST_NOP;
+        
+        executive->PutMessage(executive->executivePort,(message_t*)test);
+        
+        task_t* t = executive->CreateTask(strClockTaskName,0,clock,4096);
+        executive->AddTask(t);
+        
+        
+        
         return;
     }
   
     if(strcmp(arguments[0],"b") == 0){
-        task_t* t = executive->AddTask(over,4096,0);
-        t->node.name = "Over!";
+        task_t* t = executive->CreateTask("Over!",0,over,4096);
+        executive->AddTask(t);
         return;
     }
  
     if(strcmp(arguments[0],"c") == 0){
-        task_t* t =  executive->AddTask(bouncy,4096,0);
-        t->node.name = "Bouncy!";
+        task_t* t =  executive->CreateTask("Bouncy!",0,bouncy,4096);
+        executive->AddTask(t);
         return;
     }
     
     
     if(strcmp(arguments[0],"cli") == 0){
-        task_t* t =  executive->AddTask(CliEntry,4096,0);
-        t->node.name = "CLI";
+        task_t* t =  executive->CreateTask("CLI",0,CliEntry,4096);
+        executive->AddTask(t);
         return;
     }
     
@@ -1458,6 +1488,32 @@ void processCommand(console_t* console, int commandLength){
         
 
         
+        
+        return;
+    }
+    
+    if(strcmp(arguments[0],"listtasks") == 0){
+        
+
+        
+
+        ConsoleWriteString(console,"\n--------------------------------------\n");
+        
+        
+        executive->Forbid();
+        node_t* node = executive->taskList.head;
+        while(node->next != NULL){
+            
+            taskListNode_t* TLNode = (taskListNode_t*) node;
+            
+            ConsolePutChar(console,' ');
+            ConsoleWriteHex(console,(uint32_t)TLNode->task);ConsoleWriteString(console,": ");
+            ConsoleWriteString(console,TLNode->task->node.name);ConsoleWriteString(console,", Priority: ");
+            ConsoleWriteDec(console,TLNode->task->node.priority);ConsoleWriteString(console,"\n");
+            
+            node = node->next;
+        }
+        executive->Permit();
         
         return;
     }

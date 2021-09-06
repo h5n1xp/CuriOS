@@ -139,9 +139,9 @@ inline bool TestLock(lock_t* lock){
 
 
 
-node_t* KAlloc(size_t size){
+node_t* KAlloc(size_t size, uint64_t attributes){
     
-
+    attributes  += 0; //suppress compiler warnings about unused variables
     
     lock_t* memLock = &executive->freeList.lock;
     Lock(memLock);
@@ -348,7 +348,7 @@ void* AllocMem(size_t size, uint64_t type){
     //add on memory header size;
     size +=sizeof(node_t);
     
-    node_t* node = KAlloc(size);
+    node_t* node = KAlloc(size,type);
     node->type = NODE_DATA_BLOCK;
     
     //add this memory allocation to the calling task's memory list
@@ -411,6 +411,11 @@ library_t* OpenLibrary(char* name,uint64_t version){
     
 }
 
+void CloseLibrary(library_t* library){
+    
+    library->Close(library);
+    
+}
 
 void AddLibrary(library_t* library){
     
@@ -485,7 +490,7 @@ uint64_t OpenDevice(char* name,uint32_t unitNumber,ioRequest_t* ioRequest,uint64
 
 handler_t* OpenHandler(char* name, uint64_t version){
     
-    //this is just te open library function which seacher the device list.
+    //this is just te open library function which seaches the device list.
     handler_t* handler = (handler_t*) FindName(&executive->deviceList,name);
     
     
@@ -535,7 +540,7 @@ uint64_t DeviceUnitCount(char* name){
 }
 
 ioRequest_t* CreateIORequest(messagePort_t* replyPort,uint64_t size){
-    ioRequest_t* req = (ioRequest_t*)executive->Alloc(size);
+    ioRequest_t* req = (ioRequest_t*)executive->Alloc(size,0);
     req->message.replyPort = replyPort;
     return req;
 }
@@ -557,7 +562,7 @@ void DoIO(ioRequest_t* req){
 
 
 void dummyStub(void){
-    //debug_write_string("Unimpelmented Function\n");
+    debug_write_string("Unimpelmented Function\n");
     return;
 }
 
@@ -614,8 +619,13 @@ void InitMemory(void* startAddress, uint64_t size){
     executive->RemHead          = RemHead;
     executive->RemTail          = RemTail;
     
+    executive->Lock             = Lock;
+    executive->FreeLock         = FreeLock;
+    executive->TestLock         = TestLock;
+    
     executive->AddLibrary       = AddLibrary;
     executive->OpenLibrary      = OpenLibrary;
+    executive->CloseLibrary     = CloseLibrary;
     
     executive->CreatePort       = CreatePort;
     executive->DeletePort       = DeletePort;
@@ -652,6 +662,27 @@ void InitMemory(void* startAddress, uint64_t size){
     InitList(&executive->taskReady);
     InitList(&executive->taskWait);
     InitList(&executive->taskSuspended);
+    InitList(&executive->taskList);
 
+    
+    //Divide the memory up in to 4 blocks to limit fragmentation
+    //This is a dubious part of my strategy to limit memory fragmentation, the mmeory is divided into 4 block, each half the size of the other, when combined with coalescing (merging of adjacent free blocks) seems to keep memory fragmentation to a minimum, but with the obvious size effect that the largest possible allocation being limited to half the size of the total RAM.
+    node_t* temp0 = executive->Alloc(freeblock->size / 2,0);
+    temp0->nextContigious = NULL;    // this block will never be merged with it's neighbour.
+    
+    node_t* temp1 = executive->Alloc(temp0->size / 2,0);
+    temp1->nextContigious = NULL;    // this block will never be merged with it's neighbour.
+    
+    node_t* temp2 = executive->Alloc(temp1->size / 2,0);
+    temp2->nextContigious = NULL;    // this block will never be merged with it's neighbour.
+    
+    node_t* temp3 = executive->Alloc(temp2->size / 2,0);
+    temp3->nextContigious = NULL;    // this block will never be merged with it's neighbour.
+    
+    executive->Dealloc(temp0);
+    executive->Dealloc(temp1);
+    executive->Dealloc(temp2);
+    executive->Dealloc(temp3);
+    
     return;
 }

@@ -204,7 +204,7 @@ void InitSystemLog(uint32_t x, uint32_t y, uint32_t w, uint32_t h){
     sysLogWindow = NULL;
     sysLogWindow = intui->OpenWindowPrivate(NULL, x, y, w, h,WINDOW_TITLEBAR | WINDOW_DRAGGABLE | WINDOW_DEPTH_GADGET, "SysLog");
     
-    sysLogWindow->isVisible = false;
+    sysLogWindow->isVisible = true; // need to see the window upon boot while debuggin PCI Driver
     
     intui->SetScreenTitle(sysLogWindow,scrTit);
     
@@ -217,7 +217,7 @@ void InitSystemLog(uint32_t x, uint32_t y, uint32_t w, uint32_t h){
     curY = 22;
     
     //should use AllocMem as this doesnt need to be a node structure
-    node_t* node = executive->Alloc((sysLogWidth*sysLogHeight) + sizeof(node_t));
+    node_t* node = executive->Alloc((sysLogWidth*sysLogHeight) + sizeof(node_t),0);
     node += 1;
     sysLogBuffer = (uint8_t*)node;
     

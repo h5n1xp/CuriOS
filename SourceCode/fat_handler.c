@@ -525,7 +525,7 @@ int MountHandler(dosEntry_t* entry){
     
     messagePort_t* dosPort = executive->thisTask->dosPort;
     //need to create a temporary file_t structure as all DOS/Handler operations rely on one.
-    file_t* root = (file_t*)executive->Alloc(sizeof(file_t)); //remember to dealloc this at the end of the DOS init
+    file_t* root = (file_t*)executive->Alloc(sizeof(file_t),0); //remember to dealloc this at the end of the DOS init
     root->node.type = NODE_FILE_DESCRIPTOR;
     root->isDIR = true; //Because the root is a directory :-)
     root->request = executive->CreateIORequest(dosPort, sizeof(ioRequest_t));

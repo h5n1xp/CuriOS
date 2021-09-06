@@ -39,7 +39,9 @@ const char VERSTAG[] = "\0$VER: CuriOS 0.46a (10/08/2021) by Matt Parsons";
 
 
 void KernelTaskEntry(void){
-
+ 
+    executive->executivePort = executive->CreatePort("Executive Port"); // could probably just use the Executive's Rendezvous port?
+    
     //setup the ata device as early as possible before the DOS Library
     LoadATADevice();
     executive->AddDevice((device_t*)&ata);
@@ -54,13 +56,98 @@ void KernelTaskEntry(void){
     
    // debug_write_string("Boot Shell Currently Disabled in kernel.c");
     //Add the boot shell, this task should be responsible for setting up the user environment
-    task_t* task = executive->AddTask(CliEntry,4096*4,0);  //quad stack for Boot shell... it has a lot to do...
-    task->node.name = "BootShell";
+    task_t* task = executive->CreateTask("BootShell",0,CliEntry,4096*4);  //quad stack for Boot shell... it has a lot to do...
+    executive->AddTaskPrivate(task);
+    
+    int running = 1;
     
     do{
-        executive->Wait(1);// wait for signal 1... which is not coming at the moment.
-    }while(1);
         
+        uint64_t sigRec = executive->Wait(1 << executive->executivePort->sigNum);
+        
+        
+        //Message received at the executivePort
+        if(sigRec & 1 << executive->executivePort->sigNum){
+        
+            executiveRequest_t* request =(executiveRequest_t*) executive->GetMessage(executive->executivePort);
+            
+            while(request != NULL){
+        
+                //Handle requests
+                switch(request->request){
+                    case EXEC_REQUEST_NOP:
+                        debug_write_string("Executive: Test Request Received.\n");
+                        break;
+                        
+                    case EXEC_REQUEST_ADD_TASK:
+                        task = request->data;
+                        
+                        if(task->node.type != NODE_TASK){
+                            break;
+                        }
+                        
+                        executive->AddTaskPrivate(task);
+                        //debug_write_string("Executive: AddTask Request Received.\n");
+                        break;
+                        
+                    case EXEC_REQUEST_REM_TASK:
+                        debug_write_string("Executive: RemTask Request Received: ");
+                        task = request->data;
+                        
+                        debug_write_string(task->node.name);debug_putchar('\n');
+                    
+                        switch(task->state){
+                            case TASK_SUSPENDED: executive->Remove(&executive->taskSuspended,(node_t*)task);
+                                break;
+                            case TASK_WAITING: executive->Remove(&executive->taskWait,(node_t*)task);
+                                break;
+                            case TASK_READY: executive->Remove(&executive->taskReady,(node_t*)task);
+                                break;
+                            case TASK_RUNNING: //On a MultiCPU system the task could also be in a running state!!!
+                                break;
+                            default:
+                                break;
+                        }
+                        
+
+                        
+                        
+                        
+                        //Need to deallocate the memory on the task's memory list which will include the code/data segments
+                        //Don't forget to delete the dos port and the rendezvous ports.
+                        //need to deallocate the trask strucuture and then remove the task node from the task list...
+                        
+                        break;
+                        
+                    case EXEC_REQUEST_SHUTDOWN:
+                        
+                        //send all tasks the shutdown signal.
+                        
+                        running = 0;
+                        break;
+                        
+                    default:
+                        break;
+                }
+                
+        
+                executive->ReplyMessage((message_t*)request);
+                request = (executiveRequest_t*) executive->GetMessage(executive->executivePort);
+            }
+        
+        }
+        
+        //Handle other signals here
+        
+        
+    }while(running);
+        
+    
+    //Halt the machine
+    while(1){
+        asm volatile ("hlt"); //Just let the CPU wait for an interrupt, in an infinite loop
+    }
+    
 }
 
 
@@ -83,14 +170,26 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     //Setup multitasking system
     InitMultitasking();
     
-    task_t* task = executive->AddTask(KernelTaskEntry,4096,127);
-    task->node.name = "Executive";
+    task_t* task = executive->CreateTask("Executive",127,KernelTaskEntry,4096);
+    // This code sets the task to operate in supervisor mode
+    registers_t* regs = (registers_t*)(task->ssp - 4);
+    regs->cs = 0x8;
+    regs->ds = 0x10;
+    regs->ss = 0x10;
+    
+    executive->AddTaskPrivate(task);
+    
     
     //Initilise the graphics library.
-    LoadGraphicsLibrary(mbd);
+    LoadGraphicsLibrary();
     executive->AddLibrary((library_t*)&graphics);
     
-    //Initilise the graphical user interface.
+    //The graphics card driver is supposed to set the framebuffer, and override any functions which are hardware accelerated
+    //but the system should always set up a temporary framebuffer, if the boot loader doesn't provide one
+    void_ptr pointer = (void_ptr)mbd->framebuffer_addr;
+    graphics.ChangeFrameBufferPrivate((void*)pointer,mbd->framebuffer_width,mbd->framebuffer_height,mbd->framebuffer_bpp);
+    
+    //Initilise the Graphical User Interface.
     LoadIntuitionLibrary();
     executive->AddLibrary((library_t*)&intuition);
     
@@ -103,11 +202,7 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     debug_write_hex(mbd->flags);
     debug_write_string(" \nRAM:");
     debug_write_dec((executive->memSize/1024)/1024);debug_write_string(" Mb\n");
-   // debug_write_string("Framebuffer address: ");
-  //  debug_write_hex(mbd->framebuffer_addr); debug_write_string(" \nwidth: ");   //pitch
-   // debug_write_dec(mbd->framebuffer_width); debug_write_string(" \nheight: ");
-   // debug_write_dec(mbd->framebuffer_height); debug_write_string(" \nbit depth: ");
-   // debug_write_dec(mbd->framebuffer_bpp); debug_write_string(" \n");
+    debug_write_hex(mbd->framebuffer_addr);debug_putchar('\n');
     
     
     //Load and initilise the pci.device
@@ -128,12 +223,9 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     
 
     //This WILL never be executed
-	while(1){
-        asm volatile ("hlt"); //Just let the CPU wait for an interrupt, in an infinite loop
-    }
- 
-
-	
+	//while(1){
+    //    asm volatile ("hlt"); //Just let the CPU wait for an interrupt, in an infinite loop
+    //}
 }
 
 

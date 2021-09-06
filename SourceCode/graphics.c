@@ -244,7 +244,7 @@ bitmap_t* NewBitmap(uint32_t w,uint32_t h){
     //So the management of bitmaps needs to be handled higher up the interface chain, in intution.
     //tasks can only access bitmaps via the intution interface anyway.
     
-    bitmap_t* bm = (bitmap_t*)executive->Alloc( (w*h*4) + sizeof(bitmap_t));
+    bitmap_t* bm = (bitmap_t*)executive->Alloc( (w*h*4) + sizeof(bitmap_t),0);
     
     if(bm==NULL){
         return bm;
@@ -266,11 +266,14 @@ void FreeBitmap(bitmap_t* bitmap){
 
 bitmap_t* ResizeBitmap(bitmap_t* old,uint32_t w, uint32_t h){
     
-    if(old->width > w && old->height > h){
+    if(old->width >= w && old->height >= h){
         return old;
     }
     
-     bitmap_t* bm = (bitmap_t*)executive->Alloc( (w*h*4) + sizeof(bitmap_t));
+     bitmap_t* bm = (bitmap_t*)executive->Alloc( (w*h*4) + sizeof(bitmap_t),0);
+    
+    //need to copy old data to new bitmap, then dealloc old.
+    
     
     return bm;
 }
@@ -595,7 +598,7 @@ void FloodFill(bitmap_t* bm, uint32_t x, uint32_t y, uint32_t rgb){
     int size = (bm->width * bm->height);
     
     //Point2D* map = (Point2D*)executive->AllocMem(size*sizeof(Point2D),0);
-    node_t* buffer = executive->Alloc( ( size * sizeof(Point2D) )+sizeof(node_t) );//Alloc a node is faster than AllocMem as no record is kept of the allocation
+    node_t* buffer = executive->Alloc( ( size * sizeof(Point2D) )+sizeof(node_t),0 );//Alloc a node is faster than AllocMem as no record is kept of the allocation
     Point2D* map = (Point2D*)&buffer[1];//this now points to the area below the node header
     
     if(map==NULL){
@@ -810,24 +813,67 @@ void ClearSprite(sprite_t* sprite){
 
 
 palette_t* CreatePalette(uint32_t numberOfColours){
-    palette_t* pal = (palette_t*)executive->Alloc( ( sizeof(colour_t) * numberOfColours ) + sizeof(palette_t));
+    palette_t* pal = (palette_t*)executive->Alloc( ( sizeof(colour_t) * numberOfColours ) + sizeof(palette_t),0);
     pal->node.type = NODE_PALETTE;
     pal->count = numberOfColours;
     void* data = pal + 1;
     pal->colour = (colour_t*)data;
     return pal;
 }
+
 void SetColour(palette_t* palette,uint32_t index, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha){
     palette->colour[index].red = red;
     palette->colour[index].green = green;
     palette->colour[index].blue = blue;
     palette->colour[index].alpha = alpha;
 }
+
 colour_t GetColour(palette_t* palette, uint32_t index){
     return palette->colour[index];
 }
 
 
+void ChangeFrameBufferPrivate(void* address,uint32_t width, uint32_t height, uint32_t bpp){
+    
+    //Do something if we already have a framebuffer
+    if(graphics.frameBuffer.buffer != NULL){
+        
+        
+    }
+    
+    //it  is also at this point different bit depths could be accounted for etc...
+    if(bpp == 32){
+    
+        graphics.Colour         = colour32;
+        graphics.GetPixel       = get_pixel32;
+        graphics.PutPixel       = put_pixel32;
+    
+    }
+    
+    if(bpp == 16){
+        /*
+        blue = colour16(0x00,0x55,0xAA,0xFF);
+        white = colour16(0xFF,0xFF,0xFF,0xFF);
+        orange = colour16(0xFF,0x88,00,0xFF);
+        black = colour16(0x00,0x00,0x22,0xFF);
+    
+        grey = colour16(171,187,205,0xFF);
+        red = colour16(217,46,31,0xFF);
+    
+        colour = colour16;
+         */
+    }
+    
+    
+    if(bpp == 8){
+
+    }
+    
+    graphics.frameBuffer.buffer = address;
+    graphics.frameBuffer.width = width;
+    graphics.frameBuffer.height= height;
+    graphics.frameBuffer.bpp = bpp;
+}
 
 void InitGraphics(library_t* library){
     //perhaps check for a proper gfx card here?
@@ -841,62 +887,35 @@ library_t* OpenGraphics(library_t* library){
     return library;
 }
 
-void LoadGraphicsLibrary(multiboot_info_t* mbd){
-    //Graphics version
+void LoadGraphicsLibrary(){
+    
+    //Really the library should setup a tempoary framebuffer, but we will assume the boot loader will provide one until the gfx drivers have loaded.
+    
+    
     
     //graphics.library.node.name  = "graphics.library"; // now done in the Init function
     graphics.library.Init       = InitGraphics;
     graphics.library.Open       = OpenGraphics;
     
-    if(mbd->framebuffer_addr != 0){
         
-        graphics.frameBuffer.width = mbd->framebuffer_width;
-        graphics.frameBuffer.height= mbd->framebuffer_height;
-        
-        void_ptr pointer = (void_ptr)mbd->framebuffer_addr;
-        graphics.frameBuffer.buffer =(void*) pointer;
-        
-        graphics.frameBuffer.bpp = mbd->framebuffer_bpp;
-        
-        if(mbd->framebuffer_bpp == 16){
-            /*
-            blue = colour16(0x00,0x55,0xAA,0xFF);
-            white = colour16(0xFF,0xFF,0xFF,0xFF);
-            orange = colour16(0xFF,0x88,00,0xFF);
-            black = colour16(0x00,0x00,0x22,0xFF);
-        
-            grey = colour16(171,187,205,0xFF);
-            red = colour16(217,46,31,0xFF);
-        
-            colour = colour16;
-             */
-        }
-        
-        if(mbd->framebuffer_bpp == 32){
             
-            graphics.NewBitmap      = NewBitmap;
-            graphics.FreeBitmap     = FreeBitmap;
-            graphics.Colour         = colour32;
-            graphics.GetPixel       = get_pixel32;
-            graphics.PutPixel       = put_pixel32;
-            graphics.RenderGlyph    = RenderGlyph;
-            graphics.RenderString   = RenderString;
-            graphics.DrawRect       = DrawRect;
-            graphics.BlitBitmap     = BlitBitmap;
-            graphics.DrawLine       = DrawLine;
-            graphics.DrawCircle     = DrawCircle;
-            graphics.FloodFill      = FloodFill;
-            graphics.DrawVectorImage= DrawVectorImage;
-            graphics.BlitRect       = BlitRect;
-            graphics.ClearBitmap    = ClearBitmap;
+    graphics.NewBitmap      = NewBitmap;
+    graphics.FreeBitmap     = FreeBitmap;
+    graphics.RenderGlyph    = RenderGlyph;
+    graphics.RenderString   = RenderString;
+    graphics.DrawRect       = DrawRect;
+    graphics.BlitBitmap     = BlitBitmap;
+    graphics.DrawLine       = DrawLine;
+    graphics.DrawCircle     = DrawCircle;
+    graphics.FloodFill      = FloodFill;
+    graphics.DrawVectorImage= DrawVectorImage;
+    graphics.BlitRect       = BlitRect;
+    graphics.ClearBitmap    = ClearBitmap;
             
-            graphics.CreatePalette  = CreatePalette;
-            graphics.SetColour      = SetColour;
-            graphics.GetColour      = GetColour;
-        }
-        
-        
-    }
-    
+    graphics.CreatePalette  = CreatePalette;
+    graphics.SetColour      = SetColour;
+    graphics.GetColour      = GetColour;
+            
+    graphics.ChangeFrameBufferPrivate = ChangeFrameBufferPrivate;
 
 }

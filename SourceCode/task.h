@@ -28,14 +28,16 @@ struct task_t{
     node_t node;
     int32_t affinity;   // CPU number which this task must be scheduled to run on, or -1 for any CPU.
     uint32_t type;      // CPU type, FPU flag etc, also useful for hetrogenius cores, some Tasks may need high perforamce cores
-    uint64_t state;     // i.e. TASK_READY
-    uint64_t guru;      // Kernel Error Code, i.e. 1. Out Of Memory
+    uint32_t state;     // i.e. TASK_READY
+    uint32_t CPU;       // current CPU the task is executing on... only meaningfull when task state = TASK_RUNNING
+    uint32_t guru;      // Kernel Error Code, i.e. 1. Out Of Memory
+    int32_t forbidCount; //Forbid() shuts down multitasking on all CPUs, it's use is being phased out, and the function will be deprecated.
     task_t* parent;
-    void* dosPort;      //Rendevous port for all DOS operations
+    void* rendezvousPort;   //Task's primary communication port
+    void* dosPort;      //Rendezvous port for all DOS operations
     uint64_t dosError;  //Value set by the last DOS operation
     char* progdir;      //path to which all dos operations are relative
     list_t memoryList;
-    int32_t forbidCount;
     int (*entry)(void);
     int (*exit)(void);      //To be automatically called when signal 0x1 is recevied;
     uint64_t signalAlloc;
@@ -47,6 +49,10 @@ struct task_t{
 };
 
 
+typedef struct{
+    node_t node;
+    task_t* task;
+}taskListNode_t;
 
 void InitMultitasking(void);
 

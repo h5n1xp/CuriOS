@@ -692,7 +692,7 @@ void IntuitionUpdate(void){
         if(resizing->eventPort != NULL){
             
             if(resizeHack<2){
-            intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+            intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
                 event->flags = WINDOW_EVENT_RESIZE_END;
                 event->message.replyPort = NULL;
                 //event->window = resizing;
@@ -725,7 +725,7 @@ void IntuitionUpdate(void){
         
         //Send VSync signal to each window which needs it
         if((window->flags & WINDOW_VSYNC) && (window->eventPort != NULL) ){
-            intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+            intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
             event->flags = WINDOW_EVENT_VSYNC;
             event->message.replyPort = NULL;
             executive->PutMessage(window->eventPort,(message_t*)event);
@@ -758,7 +758,7 @@ void IntuitionUpdate(void){
 
 gadget_t* CreateGadget(window_t* window, uint32_t flags){
     
-    gadget_t* gadget = (gadget_t*)executive->Alloc(sizeof(gadget_t));
+    gadget_t* gadget = (gadget_t*)executive->Alloc(sizeof(gadget_t),0);
     gadget->node.type = NODE_GADGET;
     AddHead(&window->gadgetList,(node_t*)gadget);
     
@@ -823,7 +823,7 @@ void DefaultDepthGadgetRelease(gadget_t* gadget){
 void DefaultResizeGadgetMoved(gadget_t* gadget){
     
     if(gadget->window->eventPort != NULL){
-        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
         event->message.replyPort = NULL;
         event->flags = WINDOW_EVENT_RESIZE;
         event->window = gadget->window;
@@ -845,7 +845,7 @@ void DefaultResizeGadgetRelease(gadget_t* gadget){
     
     
     if(gadget->window->eventPort != NULL){
-        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
         event->message.replyPort = NULL;
         event->flags = WINDOW_EVENT_RESIZE_END;
         event->window = gadget->window;
@@ -866,7 +866,7 @@ void DefaultResizeGadgetRelease(gadget_t* gadget){
 void DefaultCloseGadgetRelease(gadget_t* gadget){
 
     if(gadget->window->eventPort != NULL){
-        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+        intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
         event->flags = WINDOW_EVENT_CLOSE;
         event->message.replyPort = NULL;
         event->window = gadget->window;
@@ -1924,7 +1924,7 @@ void ResizeWindow(window_t* window, uint32_t w, uint32_t h){
     bitmap_t* old = window->bitmap;
     
 
-    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
     event->message.replyPort = window->eventPort;
     event->flags = WINDOW_EVENT_REQUEST_RESIZE_WINDOW;
     event->window = window;
@@ -2082,7 +2082,7 @@ void SetVisible(window_t* window, bool state){
     }
     
     //Change window visibility
-    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
     event->flags = WINDOW_EVENT_REQUEST_CHANGE_VISIBILITY;
     event->message.replyPort = NULL;
     
@@ -2101,7 +2101,7 @@ void SetVisible(window_t* window, bool state){
 //OpenWindowPrivate only works before multitasking is started
 window_t* OpenWindowPrivate(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title){
     
-    window_t* window =(window_t*)executive->Alloc(sizeof(window_t));
+    window_t* window =(window_t*)executive->Alloc(sizeof(window_t),0);
     window->node.type = NODE_WINDOW;
     window->node.name = title;
     window->node.priority = 0;
@@ -2231,7 +2231,7 @@ void CloseWindow(window_t* window){
         window->eventPort = NULL;
     }
     
-    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
     event->flags = WINDOW_EVENT_REQUEST_CLOSE_WINDOW;
     event->message.replyPort = NULL;
     event->window = window;
@@ -2245,7 +2245,7 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
 
     //executive->debug_write_string("Open Window!\n");
     
-    window_t* window =(window_t*)executive->Alloc(sizeof(window_t));
+    window_t* window =(window_t*)executive->Alloc(sizeof(window_t),0);
     
     if(window==NULL){
         return NULL;
@@ -2361,7 +2361,7 @@ window_t* OpenWindow(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32
     //debug_write_string("Enqueuing Window!\n");
     
     //Add window to intuition's window list via a message
-    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t));
+    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
     event->flags = WINDOW_EVENT_REQUEST_OPEN_WINDOW;
     event->message.replyPort = NULL;
     event->window = window;
@@ -2671,7 +2671,7 @@ void InitIntuition(library_t* library){
     library->node.name = "intuition.library";
     library->node.type = NODE_LIBRARY;
     
-    intuition.windowList = (list_t*)executive->Alloc(sizeof(list_t));
+    intuition.windowList = (list_t*)executive->Alloc(sizeof(list_t),0);
     InitList(intuition.windowList);
     intuition.windowList->node.name = "Intuition Window List";
     screenTitle = NULL;
@@ -2687,7 +2687,9 @@ void InitIntuition(library_t* library){
     
     //Start the window server, inaccurately called the input task due to it originally being the ps2 input task...
     //the input task will be renamed to window server at some point
-    inputStruct.inputTask = executive->AddTask(InputTaskEntry,4096,20);
+    inputStruct.inputTask = executive->CreateTask("Input Task",20,InputTaskEntry,4096);
+    executive->AddTaskPrivate(inputStruct.inputTask);    //Too early for executive messages
+
 }
 
 

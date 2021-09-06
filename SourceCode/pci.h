@@ -12,8 +12,21 @@
 #include "device.h"
 
 typedef struct{
-    device_t device;
+    uint16_t vendor;
+    uint16_t device;
+    uint16_t bus;
+    uint16_t slot;
+    uint8_t pClass;
+    uint8_t subClass;
+    uint8_t revisionID;
+    uint8_t progIF;
+    uint32_t BAR0;
+    
+} PCINode_t;
 
+typedef struct{
+    device_t device;
+    list_t PCIDeviceList;
 }pci_t;
 
 typedef struct{

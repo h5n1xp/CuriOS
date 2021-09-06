@@ -62,6 +62,10 @@ int IdleTask(){
 
 
 
+
+
+
+
 void HiPriTask(){
     
     while(1){
@@ -93,10 +97,40 @@ void SetTaskPri(task_t* task,int32_t pri){
     
 }
 
-task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
 
+void AddTask(task_t* task){
+   // executive->Forbid();
+   // Enqueue(&executive->taskReady,(node_t*)task);
+   // executive->Permit();
     
-    uint32_t supervisorStackSize = 4096; 
+    executiveRequest_t* req = (executiveRequest_t*)executive->Alloc(sizeof(executiveRequest_t),0);
+    
+    req->message.replyPort = NULL;
+    req->caller = executive->thisTask;
+    req->request = EXEC_REQUEST_ADD_TASK;
+    req->data = task;
+    
+    executive->PutMessage(executive->executivePort,(message_t*)req);
+    
+}
+
+void AddTaskPrivate(task_t* task){
+    
+    taskListNode_t* tNode = NULL;
+    
+    executive->Enqueue(&executive->taskReady,(node_t*)task);
+    
+    //Keep a record every task added to the system;
+    tNode = (taskListNode_t*)executive->Alloc(sizeof(taskListNode_t),0);
+    tNode->task = task;
+    executive->AddTail(&executive->taskList,(node_t*)tNode);
+    
+}
+
+
+task_t* CreateTask(char* name, int32_t pri, void* entry, uint32_t stackSize){
+   
+    uint32_t supervisorStackSize = 4096;
     
     //minium stack is 4k
     if(stackSize<4096){
@@ -105,7 +139,7 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     
     //allocate enough memory for the stack and the task structure
     uint32_t size = supervisorStackSize + stackSize + sizeof(task_t);
-    uint8_t* buffer = (uint8_t*)executive->Alloc(size);
+    uint8_t* buffer = (uint8_t*)executive->Alloc(size,0);
     
     //Clear the buffer(starting at the bottom of the node
     //for(int i=sizeof(node_t); i<size; ++i){
@@ -114,8 +148,11 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     
     task_t* task = (task_t*)buffer;
     
+    task->node.name = name;
     task->node.type = NODE_TASK;
    
+    //debug_write_string("Exec - CreateTask:"); debug_write_string(task->node.name);debug_putchar('\n');
+    
     //set up kernel stack
     uint32_t frameSize = sizeof(registers_t);
     
@@ -141,11 +178,21 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     task->ssp +=4;  // initial esp needs to point to 4 bytes higher in mem than the stack frame.
     frame->link = task->ssp;
 
+
     task->affinity = -1;        // Any CPU will do
     task->type = 0;             // No CPU types yet
     task->state = TASK_READY;
     task->guru = GURU_MEDITATION_NO_ERROR;  // when something goes wrong an error code can be saved in the task structure.
     task->parent = executive->thisTask;
+    
+    messagePort_t* port = (messagePort_t*) executive->Alloc(sizeof(messagePort_t),0);
+    port->node.name = "Rendezvous";
+    port->node.type = NODE_MSGPORT;
+    port->owner = task;
+    port->sigNum = 15;  //uses one of the Operating System signals
+    executive->InitList(&port->messageList);
+    task->rendezvousPort = port;
+    
     task->dosPort = NULL;       // Noy all task need disk access
     task->dosError = 0;
     task->progdir = NULL;
@@ -163,17 +210,36 @@ task_t* AddTask(void* entry,uint32_t stackSize,int32_t pri){
     
     SetTaskPri(task,pri);
     
-    executive->Forbid();
-    Enqueue(&executive->taskReady,(node_t*)task);
-    executive->Permit();
-    
     return task;
+    
 }
 
 void RemTask(task_t* task){
     
-    debug_write_string("Need to implement the RemTask function!\n");
-    debug_write_string(task->node.name);debug_write_string(" wants to end\n");
+    //debug_write_string("Need to implement the RemTask function!\n");
+    //debug_write_string(task->node.name);debug_write_string(" wants to end\n");
+    
+    executiveRequest_t* req = (executiveRequest_t*)executive->Alloc(sizeof(executiveRequest_t),0);
+    
+    req->message.replyPort = NULL;
+    req->caller = executive->thisTask;
+    req->request = EXEC_REQUEST_REM_TASK;
+    
+    if(task == NULL){
+        
+        task = executive->thisTask;
+        
+        req->data = task;
+        executive->PutMessage(executive->executivePort,(message_t*)req);
+        executive->Wait(1<<15); //Put task to sleep, this should never return as the executive will kill it
+        
+    }else{
+        
+        req->data = task;
+        executive->PutMessage(executive->executivePort,(message_t*)req);
+        
+    }
+    
 }
 
 void FreeSignal(uint32_t sigNum){
@@ -394,14 +460,6 @@ task_t* FindTask(char* name){
 static void wait_trap(registers_t* regs);
 
 void InitMultitasking(){
-    //**************************************************************
-    // Write the address of the executive to address: 0x100000 (to top of the first megabyte)
-    // This address isn't used for anything once the multiboot header has been read
-    // So we are using it as the sysbase
-    // proper executables with a .executive section don't need this
-    
-    //uint32_t* sysbase  = (uint32_t*)0x100000;
-    //*sysbase = (uint32_t)executive;
     
     //debug_write_hex((uint32_t)executive);debug_putchar('\n');
 
@@ -412,23 +470,29 @@ void InitMultitasking(){
     
     
     //Idle task is special it runs in ring 0, so it can halt the CPU
-    task_t* task = AddTask(IdleTask,1024,-128); //really this should be the lowest possible priority
-    task->node.name = "Idle Task";
-    
+    task_t* task = CreateTask("Idle Task",-128,IdleTask,1024); //really this should be the lowest possible priority
+ 
+    // This code sets the task to operate in supervisor mode
     registers_t* regs = (registers_t*)(task->ssp - 4);
     regs->cs = 0x8;
     regs->ds = 0x10;
     regs->ss = 0x10;
     
+    AddTaskPrivate(task);
+    
+    
     //This shouldn't be started here! This is the intuition window server task, intuition should start it.
     //inputStruct.inputTask = AddTask(InputTaskEntry,4096,20);
     
     //To Test out task priorities
-    task = AddTask(HiPriTask,4096,30);
-    task->node.name = "HiPriTask";
+    task = CreateTask("HiPriTask",30,HiPriTask,4096);
+    AddTaskPrivate(task);
+    
+    
     
     executive->thisTask          = NULL;
     
+    executive->CreateTask        = CreateTask;
     executive->AddTask           = AddTask;
     executive->RemTask           = RemTask;
     executive->FindTask          = FindTask;
@@ -438,9 +502,12 @@ void InitMultitasking(){
     executive->FreeSignal        = FreeSignal;
     executive->SetTaskPri        = SetTaskPri;
     executive->Reschedule        = Reschedule;
-    executive->ReschedulePrivate = ReschedulePrivate;
     executive->Forbid            = Forbid;
     executive->Permit            = Permit;
+    
+    executive->ReschedulePrivate = ReschedulePrivate;
+    executive->AddTaskPrivate    = AddTaskPrivate;
+    
 }
 
 

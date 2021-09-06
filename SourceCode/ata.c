@@ -174,13 +174,13 @@ void InitATA(library_t* lib){
     
     InitList(&ata.device.unitList);
     
-    ata.device.task = executive->AddTask(ATATaskEntry,4096,10);
-    ata.device.task->node.name = "ata.device";
+    ata.device.task = executive->CreateTask("ata.device",10,ATATaskEntry,4096);
+    executive->AddTaskPrivate(ata.device.task);  // too early for executive messages, so have to use the private function... the ATA device should be started later in the boot process really so it can use the non private function.
     lib->node.name = "ata.device";
     
     
     //just have a single messagePort for all the ATA device units for now...
-    //This setup needs to be done in the actaul device task!!!
+    //This setup needs to be done in the actual device task!!!
     ATAPort = executive->CreatePort("ATA Unit"); // WARNING THIS SETS THE OWNING TASK TO THE InitATA() CALLER, NOT THE DEVICE TASK!!!
     ATAPort->owner = ata.device.task;   //need to set the correct owning task of this message port.
     
@@ -215,7 +215,7 @@ void InitATA(library_t* lib){
             lba = (uint64_t*)&driveStatusData[100];
             //debug_write_hex(*lba);debug_write_string(" sectors in size\n");
             
-            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t));
+            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t),0);
             ataUnit->unit.node.name = "DH0:";
             ataUnit->unit.messagePort = ATAPort;
             ataUnit->unit.openCount = 0;
@@ -232,7 +232,7 @@ void InitATA(library_t* lib){
             lba = (uint64_t*)&driveStatusData[100];
            debug_write_hex(*lba);debug_write_string(" sectors in size (not accurate for LBA 28 drives)\n");
             
-            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t));
+            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t),0);
             ataUnit->unit.node.name = "DH0:";
             ataUnit->unit.messagePort = ATAPort;
             ataUnit->unit.openCount = 0;
@@ -276,7 +276,7 @@ void InitATA(library_t* lib){
             lba = (uint64_t*)&driveStatusData[100];
             //debug_write_hex(*lba);debug_write_string(" \n");
             
-            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t));
+            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t),0);
             ataUnit->unit.messagePort = ATAPort;
             ataUnit->unit.node.name = "DH1:";
             ataUnit->unit.openCount = 0;
@@ -293,7 +293,7 @@ void InitATA(library_t* lib){
             lba = (uint64_t*)&driveStatusData[100];
             debug_write_hex(*lba);debug_write_string(" sectors in size\n");
             
-            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t));
+            ataUnit_t* ataUnit = (ataUnit_t*)executive->Alloc(sizeof(ataUnit_t),0);
             ataUnit->unit.node.name = "DH1:";
             ataUnit->unit.messagePort = ATAPort;
             ataUnit->unit.openCount = 0;
