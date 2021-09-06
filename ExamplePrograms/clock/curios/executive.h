@@ -39,7 +39,8 @@ typedef struct{
     void (*debug_backspace)(void);
     void (*debug_putchar)(char c);
     
-    node_t* (*Alloc)(size_t);       //For allocating node_t types, it is the responsibility of the calling task to keep a record of the allocation
+    //List functions
+    node_t* (*Alloc)(size_t, uint64_t attributes);       //For allocating node_t types, it is the responsibility of the calling task to keep a record of the allocation
     void (*Dealloc)(node_t*);       //for deallocating node_t types, it is the responsibility of the calling task to keep a record of the deallocation
     
     void* (*AllocMem)(size_t size, uint64_t type); // the allocation is recorded in the task structure of the allocating context.
@@ -61,12 +62,18 @@ typedef struct{
     node_t* (*RemHead)(list_t* list);
     node_t* (*RemTail)(list_t* list);
     
+    void (*Lock)(lock_t* lock);      // will block the task until the lock is free
+    void (*FreeLock)(lock_t* lock);  // will relelase a lock.
+    bool (*TestLock)(lock_t* lock);  // test but not set a lock, returns true if set
+    
     //Libraries
     void (*AddLibrary)(library_t* library);
     library_t* (*OpenLibrary)(char* name, uint64_t version);
+    void (*CloseLibrary)(library_t* library);
     
     //Tasks
-    task_t* (*AddTask)(void* entry,uint32_t stackSize, int32_t priority);
+    task_t* (*CreateTask)(char* name, int32_t pri, void* entry, uint32_t stackSize);
+    void (*AddTask)(task_t* task);
     void (*RemTask)(task_t* task);
     task_t* (*FindTask)(char* name);
     uint64_t (*Wait)(uint64_t signal);
@@ -75,7 +82,6 @@ typedef struct{
     void (*FreeSignal)(uint32_t sigNum);
     void (*SetTaskPri)(task_t* task, int32_t priority);
     void (*Reschedule)(void);
-    void (*ReschedulePrivate)(void_ptr* link);
     void (*Forbid)(void);
     void (*Permit)(void);
     
@@ -83,6 +89,7 @@ typedef struct{
     messagePort_t* (*CreatePort)(char* name);
     void (*DeletePort)(messagePort_t* port);
     messagePort_t* (*FindPort)(char* name);
+    void* (*CreateMessage)(uint64_t size, messagePort_t* replyPort);
     message_t* (*GetMessage)(messagePort_t* port);
     void (*PutMessage)(messagePort_t* port, message_t* message);
     void (*ReplyMessage)(message_t* message);
@@ -104,6 +111,14 @@ typedef struct{
     //Interrupts
     void (*SetIntVector)(uint8_t interruptNumber, isr_t handler); //set the interrupt handler callback code.
     
+    
+    
+    //Private Area, probably do not need to be in the interface strucutre.
+    void (*AddTaskPrivate)(task_t* task);
+    void (*ReschedulePrivate)(void_ptr* link);
+    
+    //Data Area - This can change, so must only be accessed via accessor functions by user tasks
+    
     task_t* kernelTask;
     task_t* thisTask;
     list_t deviceList;
@@ -112,7 +127,8 @@ typedef struct{
     list_t taskReady;
     list_t taskWait;
     list_t taskSuspended;
-    
+    list_t taskList;        //For Task/thread auditing
+    messagePort_t* executivePort;
 } executive_t;
 
 
