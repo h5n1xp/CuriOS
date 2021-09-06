@@ -218,7 +218,7 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     //Initilise the PS2 port, for mouse and keyboard... We should only do this if PCI->USB fails
     InitPS2();
     
-    //Start the multitasking, but starting the interrupts, the timer will fire and immediately schedule in any ready tasks
+    //Start the multitasking, by starting the interrupts, the timer will fire and immediately schedule in any ready tasks
     asm volatile("sti"); //<--- Once multitasking is started, this thread can never be scheduled back in.
     
 

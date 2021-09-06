@@ -26,7 +26,6 @@ messagePort_t* CreatePort(char* name){
     return port;
 }
 
-
 void DeletePort(messagePort_t* port){
     
     //TO DO: NEED TO REPLY TO ALL MESSAGES STILL QUEUED
@@ -44,6 +43,15 @@ messagePort_t* FindPort(char* name){
     messagePort_t* port = (messagePort_t*) FindName(&executive->portList,name);
     FreeLock(&executive->portList.lock);
     return port;
+}
+
+void* CreateMessage(uint64_t size, messagePort_t* replyPort){
+    
+    message_t* message = (message_t*)executive->Alloc(size,0);
+    message->node.type = NODE_MESSAGE;
+    message->replyPort = replyPort;
+    
+    return message;
 }
 
 message_t* GetMessage(messagePort_t* port){

@@ -101,6 +101,7 @@ typedef struct{
     messagePort_t* (*CreatePort)(char* name);
     void (*DeletePort)(messagePort_t* port);
     messagePort_t* (*FindPort)(char* name);
+    void* (*CreateMessage)(uint64_t size, messagePort_t* replyPort);
     message_t* (*GetMessage)(messagePort_t* port);
     void (*PutMessage)(messagePort_t* port, message_t* message);
     void (*ReplyMessage)(message_t* message);

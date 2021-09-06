@@ -268,8 +268,12 @@ void processKeyboardBuffer(uint8_t val){
                
                 if(inputStruct.focused->eventPort != NULL && (inputStruct.focused->flags & WINDOW_KEYBOARD) ){
                     
-                    intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
-                    event->message.replyPort = NULL;
+                    //intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
+                    //event->message.replyPort = NULL;
+                    //event->message.node.type = NODE_MESSAGE;
+                    
+                    intuitionEvent_t* event = executive->CreateMessage(sizeof(intuitionEvent_t), NULL);
+                    
                     event->flags = WINDOW_EVENT_KEYDOWN;
                     event->window = inputStruct.focused;
                     event->mouseX = 0;

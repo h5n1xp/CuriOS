@@ -34,6 +34,7 @@ messagePort_t* CreatePort(char* name);
 void DeletePort(messagePort_t* port);
 messagePort_t* FindPort(char* name);    //finds a port in the public list.
 
+void* CreateMessage(uint64_t size, messagePort_t* replyPort);
 message_t* GetMessage(messagePort_t* port); //Must be called before you access a message, as ownership is transferred to you.
 void PutMessage(messagePort_t* port, message_t* message);//You on longer own the message once called, so don't access it.
 void ReplyMessage(message_t* message);  // If you reply to a message with no reply port it will be deallocated.

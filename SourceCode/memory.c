@@ -630,7 +630,7 @@ void InitMemory(void* startAddress, uint64_t size){
     executive->CreatePort       = CreatePort;
     executive->DeletePort       = DeletePort;
     executive->FindPort         = FindPort;
-
+    executive->CreateMessage    = CreateMessage;
     executive->GetMessage       = GetMessage;
     executive->PutMessage       = PutMessage;
     executive->ReplyMessage     = ReplyMessage;
