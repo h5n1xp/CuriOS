@@ -9,7 +9,7 @@ CuriOS is closely modelled upon the original AmigaOS architecture, but with seve
 
 
 
-The Zip files here are the bootable raw hard disk image (and a VDI for VirtualBox) of the August 11th, 2021 Build of CuriOS...
+The Zip files here are the bootable raw hard disk image (and a VDI for VirtualBox), these builds tend to be reasonabily up to date...
 
 The command shell currently supports a few commands, type help for a full list.
 
@@ -28,15 +28,15 @@ AmigaOS3.0 Theme:
 ![Amiga3](https://github.com/h5n1xp/CuriOS/blob/main/ScreenShot2.png)
 
 Things to note:
-1. Some components (libraries, devices, and tasks), notably the older ones, are currently in a "primeval" state, that is to say they do not follow the normal initialisation process. Since they are compiled together a single blob, they have access to name-spaces that they will normally have to access via the executive controlled interface, also they must be initialised either by the startup "kernel thread", or the boot task. This would normally be handled by the executive upon loading from disk.
+1. Some components (libraries, devices), notably the older ones, are currently in a "primeval" state, that is to say they do not follow the normal initialisation process. Since they are compiled together a single blob, they have access to name-spaces out of normal scope. 
 
 2. There is rudimentray file system support for FAT32 drives. There is a working ata device driver (read only), so you can read raw data blocks from a hard drive. There is a FAT32 filesystem handler (a "handler" is a special device/library which knows how to translate the block data returned from a device into stream data for DOS, all file systems are implmented this way, a device can be its own handler usually when the device doesn't support file systems) which sits on top of the ata device. When the filesystem is more mature, all future components will be loaded from disk and will be initialised and accessed via the proper formal executive interface. The code currently in cli.c is just temporary while I'm building the file system and DOS code. This will eventually become the boot task whick will take over most of the role that kernel.c currently performs. I will then write a proper command shell, which will then be spawned by the boot task. The CLI can load ELF executable files and execute them.
 
-3. The is no proper build process, this is the 8th step (code rewrite) and I will formalise the build process with a hierarchical file structure and Make files once step 8 reaches maturity. At the moment the whole thing is built using shell scripts.
+3. The is no proper build process, this is the 8th step (code rewrite) and I will formalise the build process with a hierarchical file structure and Make files once step 8 reaches maturity. At the moment the whole thing is built using simple shell scripts.
 
 4. The Executive (the public interface of the kernel), is just a composite of various sub components (i.e. memory.h, list.h, task.h, ports.h, etc...) which is constructed during their initialisation, this is due to API being in flux at the moment. I plan to formalise this at some point.
 
-5. The most basic operating system unit is the node. Everything in the operating system is a node, nodes record their type, their size, and also can have a name string. Nodes may be added to list instance (which is itself a node), but only one list at any given time.
+5. The most basic operating system unit is the node. Everything in the operating system is a node, nodes record their type, their size, and also can have a name string. Nodes may be added to list instance (which is itself a node), but can only be a member of one list at any given time.
 
 6. There are three fundamental components (everything is built from one of these):
     1. Libraries: these are groups of related functions, these are based on a shared code concept for speed and smallness of memory footprint and are linked at runtime. Currently library calls are generally handled in the context of the calling task, likely this will change and some functions will execute in a separate contex, as each library matures and where it makes sense. Perhaps unusually, libraries are linked at runtime, rather than compile time, or load time. With the exception of the executive library which is linked at load time. Libraries are closer to the OOP concept of classes than classic software libraries. when opening a library for use, the library returns an instance of itself. Most libraries are singltons and always return the same instance, where library member functions are instance dependant, they will take the instance address as an argument. 
@@ -48,7 +48,7 @@ Things to note:
 
 8. The kernel design is a fairly pure microkernel; Library calls generally happen in the context of the calling task, messages should be handled in the context of the receiving task (devices have mechanisms to get around this).
 
-9. No memory protection, any task can access any memory address. Don't rely on it always being like this, only access memory obtained via the executive interface (always manipulate data structures via the documented interface), and don't try to access messages if they are not in the possession of that task. Its might work now, it won't work in future. 
+9. No memory protection, any task can access any memory address. Don't rely on it always being like this, only access memory obtained via the executive interface (always manipulate data structures via the documented interface), and don't try to access messages if they are not in the possession of that task. It might work now, it won't work in the future. 
 
 10. There is no documentation... yet :-)
 
