@@ -171,6 +171,7 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     InitMultitasking();
     
     task_t* task = executive->CreateTask("Executive",127,KernelTaskEntry,4096);
+    executive->SetTaskPriPrivate(task,127);
     // This code sets the task to operate in supervisor mode
     registers_t* regs = (registers_t*)(task->ssp - 4);
     regs->cs = 0x8;

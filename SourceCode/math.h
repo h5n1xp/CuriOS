@@ -13,6 +13,7 @@
 #define PI 3.141592654
 
 int32_t abs(int32_t value);
+int pow(int x, int y);
 
 float hermite(float x, float y0, float y1, float y2, float y3); //simple bicubic interpolation
 

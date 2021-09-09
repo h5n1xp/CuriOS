@@ -27,4 +27,6 @@ int strncmp(char* str1, char* str2, size_t n);
 
 void memset(void* addr, int value, size_t len);
 
+void memcpy(void* desti, void* srci, uint64_t n);
+
 #endif

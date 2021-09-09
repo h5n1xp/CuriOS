@@ -13,6 +13,18 @@ int32_t abs(int32_t value){
     return value;
 }
 
+int pow(int x, int y){
+    
+    int retVal = 1;
+    
+    for(int i=0;i<y;++i){
+        retVal *= x;
+    }
+    
+    return retVal;
+    
+}
+
 //float version of my bicubic interpolation function
 float hermite(float x, float y0, float y1, float y2, float y3){
     // 4-point, 3rd-order Hermite (x-form)
@@ -54,6 +66,8 @@ float cos(float x){
 
     return res;
 }
+
+
 
 /*
 double sin(double x){

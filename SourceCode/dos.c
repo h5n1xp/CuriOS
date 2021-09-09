@@ -39,6 +39,17 @@ typedef struct {
 } Elf32_Header_t;
 
 typedef struct {
+    uint32_t        p_type;
+    uint32_t        p_offset;
+    uint32_t        p_vaddr;
+    uint32_t        p_paddr;
+    uint32_t        p_filesz;
+    uint32_t        p_memsz;
+    uint32_t        p_flags;
+    uint32_t        p_align;
+} Elf32_Program_Header_t;
+
+typedef struct {
     uint32_t    sh_name;    //offset into string table
     uint32_t    sh_type;
     uint32_t    sh_flags;
@@ -62,6 +73,16 @@ typedef struct {
 
 
 
+
+
+string_t* CreateString(uint64_t length){
+    //length of the printable characters, all strings are automatically null terminated
+    string_t* string = (string_t*) executive->Alloc(sizeof(string_t)+length+1,0);
+    string->node.type = NODE_STRING;
+    string->text = (char*)&string[1];
+    
+    return string;
+}
 
 
 
@@ -272,11 +293,14 @@ file_t* Open(char* fileName, uint64_t attributes){
     
     //debug_write_string("DOS Library: Reading Root\n\n");
     directoryStruct_t* ds = NULL;
+    directoryEntry_t* dirE = NULL;
     
     count = 0;
     j = 0;
     uint32_t clusterNumber = 0;
-    bool sucess;
+    int sucess = 0;
+    
+    
     do{
         sucess = false;
         //ds = readDir(file,clusterNumber);
@@ -286,7 +310,7 @@ file_t* Open(char* fileName, uint64_t attributes){
             debug_write_string("ERROR!!! CAN'T READ DIR at block"); debug_putchar(clusterNumber);debug_putchar('\n');
         }
         
-        directoryEntry_t* dirE = ds->entry;
+        dirE = ds->entry;
         //debug_write_string("Searching For ");debug_write_string(elements[count]);debug_putchar('\n');
         for(uint32_t i=0; i < ds->size; ++i){
             
@@ -299,10 +323,11 @@ file_t* Open(char* fileName, uint64_t attributes){
                 
                 clusterNumber = dirE[i].cluster;
                 
+                strcpy(file->name,dirE[i].name);
                 file->size = dirE[i].fileSize;
                 file->startBlock = clusterNumber;
                 file->isDIR = dirE[i].isDir;
-                sucess = true;
+                sucess = i;
             }
             
 
@@ -312,17 +337,12 @@ file_t* Open(char* fileName, uint64_t attributes){
         count +=1;
     }while(count < pathElementCount);
 
-    if(sucess==false){
+    if(sucess==0){
         Close(file);
         executive->thisTask->dosError = DOS_ERROR_OBJECT_NOT_FOUND;
         return NULL;
     }
     
-    //debug_write_dec((uint32_t)ds);
-    //executive->FreeMem(ds);//free the directory structure returned by readDir()
-    
-    //file->isDIR = true;     //this only returns a directory for now...
-    //file->startBlock = 0;   // the root block, should probably get this from the DOS entry...
     return file;
     
 }
@@ -340,7 +360,7 @@ void Close(file_t* file){
 
 int Read(file_t* file, void* buffer, uint32_t count){
     
-    debug_write_string(file->fileName);
+    debug_write_string(file->name);
     debug_write_dec((uint32_t)buffer);
     debug_write_dec(count);
     
@@ -449,7 +469,8 @@ executable_t LoadELF(file_t* file){
     }
     
     
-    //Fix up the executive pointer
+    
+    //Get the Section Table
     Elf32_Section_Header_t* sectionTable = (Elf32_Section_Header_t*) &buffer[header->e_shoff];
     
     //String Section
@@ -489,12 +510,30 @@ executable_t LoadELF(file_t* file){
     }
    
     
+    //Allocate the executable segment(s)
+    Elf32_Program_Header_t* programTable = (Elf32_Program_Header_t*) &buffer[header->e_phoff];
+    //debug_write_string("Type:   ");debug_write_hex(programTable[0].p_type);debug_putchar('\n');
+    //debug_write_string("Offset: ");debug_write_hex(programTable[0].p_offset);debug_putchar('\n');
+    //debug_write_string("v addr: ");debug_write_hex(programTable[0].p_vaddr);debug_putchar('\n');
+    //debug_write_string("p addr: ");debug_write_hex(programTable[0].p_paddr);debug_putchar('\n');
+    //debug_write_string("f size: ");debug_write_hex(programTable[0].p_filesz);debug_putchar('\n');
+    //debug_write_string("memreq: ");debug_write_hex(programTable[0].p_memsz);debug_putchar('\n');
+    //debug_write_string("flags:  ");debug_write_hex(programTable[0].p_flags);debug_putchar('\n');
+    //debug_write_string("align:  ");debug_write_hex(programTable[0].p_align);debug_putchar('\n');
+    
+    node_t* node = executive->Alloc(sizeof(node_t) + programTable[0].p_memsz,0);
+    node->type = NODE_EXECUTABLE_SEGMENT;
+    uint8_t* addr = (uint8_t*)&node[1];
+    memset(addr, 0, programTable[0].p_memsz);//clear just the whole segment, but really only need to do the BSS
+    memcpy(addr, &buffer[programTable[0].p_offset],programTable[0].p_filesz); //copy the text data into the segment;
+    
+    //we can now free the ELF file...
+    executive->FreeMem(buffer);
     
     //Entry function, here DOS should allocate a proger TASK_SEGMENT node and copy the program into it, freeing the loaded ELF file from memory
     ret.type = 1;
-    ret.segment = (node_t*)buffer;
-    ret.entry = &buffer[4096 + header->e_entry];
-    
+    ret.segment = node;
+    ret.entry = (void*)&addr[header->e_entry];
 
     
     return ret;
@@ -626,4 +665,6 @@ void LoadDOSLibrary(){
     dos.Examine                 = Examine;
     dos.LoadFile                = LoadFile;
     dos.LoadELF                 = LoadELF;
+    
+    dos.CreateString            = CreateString;
 }

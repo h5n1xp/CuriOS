@@ -114,3 +114,31 @@ void memset(void* addr, int value,size_t len){
     }while(len>0);
     
 }
+
+void memcpy(void* desti, void* srci, uint64_t n){
+    
+    uint8_t* dest = desti;
+    uint8_t* src = srci;
+    
+    do{
+        n -=1;
+        dest[n] = src[n];
+    }while(n > 0);
+    
+}
+
+/*
+char* strcpy(char* dest, char* src){
+    
+    uint64_t index = 0;
+    
+    while(src[index] ! = NULL){
+        
+        dest[index] = src[index];
+        index += 1;
+    }
+    
+    return dest;
+    
+}
+*/

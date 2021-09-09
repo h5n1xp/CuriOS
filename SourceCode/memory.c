@@ -490,7 +490,7 @@ uint64_t OpenDevice(char* name,uint32_t unitNumber,ioRequest_t* ioRequest,uint64
 
 handler_t* OpenHandler(char* name, uint64_t version){
     
-    //this is just te open library function which seaches the device list.
+    //this is just the open library function which seaches the device list.
     handler_t* handler = (handler_t*) FindName(&executive->deviceList,name);
     
     
@@ -517,6 +517,12 @@ void CloseDevice(ioRequest_t* ioRequest){
     
     device_t* device = ioRequest->device;
     device->library.Close((library_t*)device);
+    
+}
+
+void CloseHandler(handler_t* handler){
+    
+    CloseLibrary((library_t*)handler);
     
 }
 
@@ -648,6 +654,7 @@ void InitMemory(void* startAddress, uint64_t size){
     executive->OpenDevice       = OpenDevice;
     executive->OpenHandler      = OpenHandler;
     executive->CloseDevice      = CloseDevice;
+    executive->CloseHandler     = CloseHandler;
     executive->DeviceUnitCount  = DeviceUnitCount;
     executive->SendIO           = SendIO;
     executive->DoIO             = DoIO;

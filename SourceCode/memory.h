@@ -114,6 +114,7 @@ typedef struct{
     uint64_t (*OpenDevice)(char* name,uint32_t unitNumber,ioRequest_t* ioRequest,uint64_t flags);
     handler_t* (*OpenHandler)(char* name, uint64_t version);
     void (*CloseDevice)(ioRequest_t* ioRequest);
+    void (*CloseHandler)(handler_t* handler);
     uint64_t (*DeviceUnitCount)(char* name);
     ioRequest_t* (*CreateIORequest)(messagePort_t* replyPort, uint64_t size);
     void (*SendIO)(ioRequest_t* req);
@@ -125,7 +126,8 @@ typedef struct{
     
     
     
-    //Private Area, probably do not need to be in the interface strucutre.
+    //Private Area, these do not need to be in the public interface strucutre.
+    void (*SetTaskPriPrivate)(task_t* task, int32_t priority);
     void (*AddTaskPrivate)(task_t* task);
     void (*ReschedulePrivate)(void_ptr* link);
     

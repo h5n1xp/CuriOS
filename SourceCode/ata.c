@@ -175,6 +175,7 @@ void InitATA(library_t* lib){
     InitList(&ata.device.unitList);
     
     ata.device.task = executive->CreateTask("ata.device",10,ATATaskEntry,4096);
+    executive->SetTaskPriPrivate(ata.device.task,10);
     executive->AddTaskPrivate(ata.device.task);  // too early for executive messages, so have to use the private function... the ATA device should be started later in the boot process really so it can use the non private function.
     lib->node.name = "ata.device";
     

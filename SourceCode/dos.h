@@ -24,6 +24,7 @@
 #define DOS_ERROR_NOT_A_DIRECTORY 104
 #define DOS_ERROR_OBJECT_NOT_FOUND 105
 #define DOS_ERROR_OBJECT_NOT_OF_REQUIRED_TYPE 106   // trying to perform file system action on a device which doesn't support them.
+#define DOS_ERROR_NOT_A_STRING 107
 
 //The dosEntry is handler context, this defines what the device looks like to DOS
 //this allows a file system to be set up on a device.
@@ -65,7 +66,7 @@ typedef struct{
     node_t node;
 
     char* pathName;
-    char* fileName;
+    char name[64];
     bool isDIR;
     uint64_t size;
     uint64_t numberOfBlocks;    // <---- possibly this is meaningless...
@@ -76,11 +77,23 @@ typedef struct{
 }file_t;
 
 
+#define DOS_FILE_NOT_EXECUTABLE 0
+#define DOS_FILE_CLI_ONLY 1
+#define DOS_FILE_STANDALONE 2
+#define DOS_FILE_LIBRARY 3
+#define DOS_FILE_SINGLE_INSTANCE 4
+
 typedef struct{
-    int type;           // 0 = Not executable, 1 = From CLI only, 2 = Standalone task, 3 = Library;
+    int type;           // 0 = Not executable, 1 = From CLI only, 2 = Standalone task, 3 = Library, 4 = Single Instance (only one running instance allowed)
     node_t* segment;    // memory node where the progam is stored, .text and .data
     void* entry;        // entry point of the code.
 } executable_t;
+
+
+typedef struct{
+    node_t node;
+    char* text;
+} string_t;
 
 typedef struct{
     library_t library;
@@ -94,6 +107,9 @@ typedef struct{
     directoryStruct_t* (*Examine)(file_t* dir);
     uint8_t* (*LoadFile)(file_t* file);
     executable_t (*LoadELF)(file_t* file);
+    
+    string_t* (*CreateString)(uint64_t length); //length of the printable characters, all strings are automatically null terminated
+
 }dos_t;
 
 

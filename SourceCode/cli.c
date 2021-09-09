@@ -16,11 +16,13 @@
 
 #include "SystemLog.h"
 
-#include "timer.h"
+#include "timer.h"  // for the clock test program
 
-#include "math.h"
+#include "math.h" //for the clock test program
 
+#include "pci.h"    // for the showpci command
 
+#include "stdlib.h"
 
 intuition_t* intuibase;
 
@@ -1303,6 +1305,7 @@ void processCommand(console_t* console, int commandLength){
         ConsoleWriteString(console,"   listfree - list free memory blocks.\n");
         ConsoleWriteString(console,"   listtasks - list tasks currently running on the system.\n");
         ConsoleWriteString(console,"   run (Usage: run filename) - loads an ELF executable into memory... and runs it (detaches task from CLI!)\n");
+        ConsoleWriteString(console,"   showpci (Usage: showpci filename) - list details of a pci device\n");
         return;
     }
     
@@ -1373,22 +1376,19 @@ void processCommand(console_t* console, int commandLength){
                     return;
                 }
                 
-                task_t* task =  executive->CreateTask("PlaceHolder",0,tmp.entry,4096);
+                
+                //allocate a string for the task name
+                string_t* nameString = dosbase->CreateString(strlen(file->name));
+                strcpy(nameString->text,file->name);
+                //ConsoleWriteString(console,"running "); ConsoleWriteString(console,t); ConsoleWriteString(console,"\n");
+                
+                task_t* task =  executive->CreateTask(nameString->text,0,tmp.entry,4096);
                 executive->AddTask(task);
-                //task_t* task =  executive->AddTask(tmp.entry,4096,0);
                 
-                //remove the memory segment from this task's memory list and add it to the task's memory list
-                //All allocations relating to a task must be recorded in the task's own structure
-                //This is so they can be cleaned up upon exit.
-                //
-                //At the moment, LoadELF just returns the whole file, eventually it will return just the program segment
-                //The program segment will be type NODE_TASK_SEGMENT so won't need removing from the calling task's memory list
-                executive->Remove(&executive->thisTask->memoryList,(node_t*)tmp.segment);
-                tmp.segment->type = NODE_TASK_SEGMENT;  //Only needed because dos currently records the allocation on it's own memory list as data.
-                executive->AddTail(&task->memoryList,(node_t*)tmp.segment);
-                debug_write_string("Check this Segment ownership code in the run function in cli.c\n");
+                //add the program segment and assign the name string to the task's own memory list
+                executive->AddTail(&task->memoryList,tmp.segment);
+                executive->AddTail(&task->memoryList,(node_t*)nameString);
                 
-                //ConsoleWriteString(console,"\n");
                 dosbase->Close(file);
             }
             
@@ -1397,6 +1397,55 @@ void processCommand(console_t* console, int commandLength){
         }
         
             return;
+    }
+    
+    if(strcmp(arguments[0],"showpci") == 0){
+
+        int num = 0;
+        
+        if(count < 2){
+            
+        }else{
+            num = atoi(arguments[1]);
+        }
+        
+        
+        
+        pci_t* pci = (pci_t*) executive->OpenHandler("pci.device",0);
+        
+        if(pci == NULL){
+            ConsoleWriteString(console,"Error: No pci.device\n");
+            
+            return;
+        }
+        
+        if(num > (pci->PCIDeviceList.count - 1)){
+            ConsoleWriteString(console,"Error: No pci device in that slot number.\n");
+            executive->CloseLibrary((library_t*)pci);
+            return;
+        }
+        
+        PCINode_t* pcinode = (PCINode_t*)executive->ItemAtIndex(&pci->PCIDeviceList,num);
+
+        ConsoleWriteString(console,"PCI Device: "); ConsoleWriteString(console,pci->PCIClassName[pcinode->pClass]); ConsolePutChar(console,'\n');
+        
+        ConsoleWriteString(console,"Bus: ");ConsoleWriteHex(console,pcinode->bus);
+        ConsoleWriteString(console,", Slot: ");ConsoleWriteHex(console,pcinode->slot );
+        ConsoleWriteString(console,", Class: ");ConsoleWriteHex(console,pcinode->pClass);
+        ConsoleWriteString(console,", Vendor: ");ConsoleWriteHex(console,pcinode->vendor);
+        ConsoleWriteString(console,", Device/Function: ");ConsoleWriteHex(console,pcinode->device);
+        ConsoleWriteString(console,", Sub: ");ConsoleWriteHex(console,pcinode->subClass);
+        ConsoleWriteString(console,", ProgIF: ");ConsoleWriteHex(console,pcinode->progIF);
+        ConsoleWriteString(console,", RevisionID: ");ConsoleWriteHex(console,pcinode->revisionID);ConsolePutChar(console,'\n');
+        for(int i=0;i<6;++i){
+            ConsoleWriteString(console,"BAR");ConsoleWriteDec(console,i);ConsoleWriteString(console,": ");
+            ConsoleWriteHex(console,pcinode->BAR[i]);ConsolePutChar(console,'\n');
+        }
+        ConsolePutChar(console,'\n');
+        
+         
+        executive->CloseLibrary((library_t*)pci);
+        return;
     }
     
     

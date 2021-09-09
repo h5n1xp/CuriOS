@@ -17,7 +17,7 @@
 #define THEME_MAC 2
 #define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-int guiTheme = THEME_OLD;
+int guiTheme = THEME_NEW;
 
 // time to rewrite the pointer code?
 //the normal pointers should be 11px by 11px, and should include an indicator to show if they need to be scaled
@@ -1234,7 +1234,7 @@ void DrawSizeGadgetNew(gadget_t* gadget){
     switch(state){
             
         case GADGET_STATE_NORMAL:
-            
+        
             graphics.DrawRect(window->bitmap,gadget->ix+1, gadget->iy,16,2,intuition.white);
             graphics.DrawRect(window->bitmap,gadget->ix, gadget->iy,1,gadget->h,intuition.white);
             
@@ -1242,6 +1242,8 @@ void DrawSizeGadgetNew(gadget_t* gadget){
             graphics.DrawRect(window->bitmap,gadget->ix, gadget->iy+gadget->h-1,gadget->w+1,2,intuition.black);
             
             
+            
+            //graphics.DrawLine(window->bitmap,gadget->ix+2,gadget->iy+2,gadget->ix+10,gadget->iy+10,intuition.black);
             
             graphics.DrawRect(window->bitmap,gadget->ix+3, gadget->iy+4,6,6,intuition.black);
             graphics.DrawRect(window->bitmap,gadget->ix+7, gadget->iy+6,8,10,intuition.black);
@@ -1253,6 +1255,9 @@ void DrawSizeGadgetNew(gadget_t* gadget){
                 graphics.DrawRect(window->bitmap,gadget->ix + 5, gadget->iy + 6,2,2,intuition.backgroundColour);
                 graphics.DrawRect(window->bitmap,gadget->ix + 9, gadget->iy + 8,4,6,intuition.backgroundColour);
             };
+            
+            
+             
             window->needsRedraw = true;
             break;
         case GADGET_STATE_HOVER:
@@ -2688,6 +2693,7 @@ void InitIntuition(library_t* library){
     //Start the window server, inaccurately called the input task due to it originally being the ps2 input task...
     //the input task will be renamed to window server at some point
     inputStruct.inputTask = executive->CreateTask("Input Task",20,InputTaskEntry,4096);
+    executive->SetTaskPriPrivate(inputStruct.inputTask,20);
     executive->AddTaskPrivate(inputStruct.inputTask);    //Too early for executive messages
 
 }

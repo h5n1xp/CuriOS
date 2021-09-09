@@ -81,13 +81,19 @@ void InitPCI(library_t* lib){
                             
                             uint8_t class = classword >> 8;
                             uint8_t sub = (uint8_t)(classword & 255);
-                            
-                            uint16_t lowBAR = pciConfigReadWord(bus, slot, f, 0x10);  // get lower BAR
-                            uint16_t hiBAR = pciConfigReadWord(bus, slot, f, 0x12);  // get higher BAR
-                            
+    
                             
                             //Save PCI information.
                             PCINode_t* pcinode = (PCINode_t*)executive->Alloc(sizeof(PCINode_t),0);
+                            
+                            for(int i=0; i<6;++i){
+                                uint16_t addr = (i*4) + 16;
+                                uint16_t lowBAR = pciConfigReadWord(bus, slot, f, addr);  // get lower BAR
+                                uint16_t hiBAR = pciConfigReadWord(bus, slot, f, addr + 2);  // get higher BAR
+                                pcinode->BAR[i] = (hiBAR << 16) | lowBAR;
+                                
+                            }
+                            
                             pcinode->vendor = vendor;
                             pcinode->bus = bus;
                             pcinode->slot = slot;
@@ -96,18 +102,18 @@ void InitPCI(library_t* lib){
                             pcinode->subClass = sub;
                             pcinode->progIF = prog;
                             pcinode->revisionID = rev;
-                            pcinode->BAR0 = (hiBAR << 16) | lowBAR;
                             executive->AddTail(&pci.PCIDeviceList,(node_t*)pcinode);
                             
-                            debug_write_string("Class: ");debug_write_string(PCIClassName[class]);debug_putchar(',');
+                            debug_write_hex(slot);debug_putchar(':');
+                            debug_write_string(PCIClassName[class]);debug_putchar(',');
                             debug_write_string(" Vendor: ");debug_write_hex(vendor);debug_putchar(' ');
                             //debug_write_string(" Bus: ");debug_write_hex(bus);debug_putchar(',');
-                            //debug_write_string(" Slot: ");debug_write_hex(slot);debug_putchar(',');
+                            
                             debug_write_string(" Device: ");debug_write_hex(func);debug_putchar(',');
                             debug_write_string(" Sub: ");debug_write_hex(sub);debug_putchar(',');
                             debug_write_string(" ProgIF: ");debug_write_hex(prog);debug_putchar(',');
                             //debug_write_string(" RevisionID: ");debug_write_hex(rev);debug_putchar(',');
-                            debug_write_string(" BAR0: ");debug_write_hex(pcinode->BAR0);debug_putchar(',');
+                            debug_write_string(" BAR0: ");debug_write_hex(pcinode->BAR[0]);debug_putchar(',');
                             debug_putchar('\n');
                             f += 1;
                             
@@ -159,4 +165,6 @@ void LoadPCIDevice(){
     pci.device.library.Init             = InitPCI;
     pci.device.library.baseLibrary      = &pci.device.library;
     pci.device.BeginIO                  = PCIBeginIO;
+    
+    pci.PCIClassName = PCIClassName;
 }

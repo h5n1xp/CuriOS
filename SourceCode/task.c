@@ -93,10 +93,15 @@ void HiPriTask(){
  
 void SetTaskPri(task_t* task,int32_t pri){
     
+    if(pri > 0){pri = 0;}   //no user task may be above 0
+    task->node.priority = pri;
+}
+
+void SetTaskPriPrivate(task_t* task,int32_t pri){
+    
     task->node.priority = pri;
     
 }
-
 
 void AddTask(task_t* task){
    // executive->Forbid();
@@ -471,7 +476,7 @@ void InitMultitasking(){
     
     
     //Idle task is special it runs in ring 0, so it can halt the CPU
-    task_t* task = CreateTask("Idle Task",-128,IdleTask,1024); //really this should be the lowest possible priority
+    task_t* task = CreateTask("Idle Task",-128,IdleTask,1024); //this should be the lowest possible priority
  
     // This code sets the task to operate in supervisor mode
     registers_t* regs = (registers_t*)(task->ssp - 4);
@@ -487,6 +492,7 @@ void InitMultitasking(){
     
     //To Test out task priorities
     task = CreateTask("HiPriTask",30,HiPriTask,4096);
+    SetTaskPriPrivate(task,30);
     AddTaskPrivate(task);
     
     
@@ -506,6 +512,7 @@ void InitMultitasking(){
     executive->Forbid            = Forbid;
     executive->Permit            = Permit;
     
+    executive->SetTaskPriPrivate = SetTaskPriPrivate;
     executive->ReschedulePrivate = ReschedulePrivate;
     executive->AddTaskPrivate    = AddTaskPrivate;
     

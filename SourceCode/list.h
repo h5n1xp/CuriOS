@@ -38,7 +38,8 @@
 #define NODE_FILE_DESCRIPTOR    14
 #define NODE_DOS_ENTRY          15
 #define NODE_DATA_BLOCK         16
-#define NODE_TASK_SEGMENT       17
+#define NODE_EXECUTABLE_SEGMENT 17
+#define NODE_STRING             18
 
 typedef struct {
     volatile bool isLocked;
