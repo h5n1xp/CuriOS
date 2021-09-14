@@ -17,7 +17,7 @@
 #define THEME_MAC 2
 #define THEME_GEM 3     //perhaps implement a classic Atari GEM theme too?
 
-int guiTheme = THEME_MAC;
+int guiTheme = THEME_OLD;
 
 
 
@@ -721,14 +721,33 @@ void IntuitionUpdate(void){
     }
     
     
-    //don't update if there are no windows or nothing needs updating
-    if(intuition.windowList->count == 0 || intuition.needsUpdate == false){
+    //don't update if nothing needs updating
+    if(intuition.needsUpdate == false){
         graphics.ClearCursor();
         graphics.DrawCursor(mouseX,mouseY);
-        //drawMouse();
+        
+        
+        //Send VSync signal to each window which needs it
+        node_t* node = intuition.windowList->pred;
+        do{
+            window_t* window =(window_t*)node;
+            
+
+            if((window->flags & WINDOW_VSYNC) && (window->eventPort != NULL) ){
+                intuitionEvent_t* event = (intuitionEvent_t*) executive->Alloc(sizeof(intuitionEvent_t),0);
+                event->flags = WINDOW_EVENT_VSYNC;
+                event->message.replyPort = NULL;
+                executive->PutMessage(window->eventPort,(message_t*)event);
+            }
+            
+            
+            node = node->prev;
+        }while(node->prev !=NULL);
+        
         return;
     }
 
+    
     intuition.needsUpdate = false;
 
     
@@ -737,6 +756,7 @@ void IntuitionUpdate(void){
     node_t* node = intuition.windowList->pred;
     
     graphics.ClearCursor();
+    
     do{
         window_t* window =(window_t*)node;
         
@@ -757,17 +777,13 @@ void IntuitionUpdate(void){
         if(window->needsRedraw == true){
             RedrawBlitRects(window);
         }
-        //else{
-        //    graphics.DrawRect(&graphics.frameBuffer, window->x,window->y,80,80,intuition.orange);
-        //}
-        
         
         node = node->prev;
     }while(node->prev !=NULL);
     
 
     graphics.DrawCursor(mouseX,mouseY);
-    //drawMouse();
+ 
 }
 
 
