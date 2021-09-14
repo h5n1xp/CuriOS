@@ -25,11 +25,12 @@ typedef struct{
 
 
 typedef struct{
-    uint8_t red;
-    uint8_t green;
     uint8_t blue;
+    uint8_t green;
+    uint8_t red;
     uint8_t alpha;
 } colour_t;
+
 
 typedef struct{
     node_t node;
@@ -70,7 +71,7 @@ extern uint8_t topazOld_font[];
 
 typedef struct{
     library_t library;
-    bitmap_t frameBuffer;
+
     bitmap_t* (*NewBitmap)(uint32_t w,uint32_t h);
     void (*FreeBitmap)(bitmap_t* bitmap);
     uint32_t (*Colour)(uint8_t red, uint8_t green, uint8_t blue,uint8_t alpha);
@@ -93,7 +94,21 @@ typedef struct{
     void (*SetColour)(palette_t* palette,uint32_t colour, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
     colour_t (*GetColour)(palette_t* palette, uint32_t colour);
     
-    void (*ChangeFrameBufferPrivate)(void* address,uint32_t width, uint32_t height, uint32_t bpp);
+    void (*ChangeFrameBufferPrivate)(void* address,uint32_t width, uint32_t height, uint32_t bpp, bool hasHardwareCursor);
+    
+    bitmap_t* (*ConvertIndexImageToBitmap)(uint8_t* image, uint32_t w, uint32_t h, palette_t* palette);
+    void (*SetCursorImage)(bitmap_t* image);
+    void (*ClearCursor)(void);              //this will be an empty function on machines with a hardware cursor
+    void (*DrawCursor)(uint32_t x, uint32_t y);       //will simply update the cursor x and y on machines with a hardware cursor
+    
+    //Private data area, only access this data via the accessor functions
+    bitmap_t frameBuffer;
+    uint32_t cursorX;               //for machines with no hardware cursor
+    uint32_t cursorY;               //for machines with no hardware cursor
+    uint32_t cursorSize;            //for machines with no hardware cursor optimise so the blit is no larger than needed
+    bitmap_t* cursorBackingStore;   //for machines with no hardware cursor
+    bitmap_t* cursorBitmapImage;
+
     
 }graphics_t;
 

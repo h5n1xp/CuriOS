@@ -740,7 +740,8 @@ int over(){
             intuibase->DrawCircle(under,ballX+4,ballY+4,4,intuition.black, false);
             intuibase->FloodFill(under,ballX+4,ballY+4,intuition.orange);
         
-        under->needsRedraw = true;
+        //under->needsRedraw = true;
+        intuibase->Redraw(under);
         WaitMS(1);
     }
     
@@ -1401,12 +1402,12 @@ void processCommand(console_t* console, int commandLength){
     
     if(strcmp(arguments[0],"showpci") == 0){
 
-        int num = 0;
+        uint64_t num = 0;
         
         if(count < 2){
             
         }else{
-            num = atoi(arguments[1]);
+            num = (uint64_t)atoi(arguments[1]);
         }
         
         

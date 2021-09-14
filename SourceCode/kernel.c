@@ -188,7 +188,7 @@ void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     //The graphics card driver is supposed to set the framebuffer, and override any functions which are hardware accelerated
     //but the system should always set up a temporary framebuffer, if the boot loader doesn't provide one
     void_ptr pointer = (void_ptr)mbd->framebuffer_addr;
-    graphics.ChangeFrameBufferPrivate((void*)pointer,mbd->framebuffer_width,mbd->framebuffer_height,mbd->framebuffer_bpp);
+    graphics.ChangeFrameBufferPrivate((void*)pointer,mbd->framebuffer_width,mbd->framebuffer_height,mbd->framebuffer_bpp, false);
     
     //Initilise the Graphical User Interface.
     LoadIntuitionLibrary();

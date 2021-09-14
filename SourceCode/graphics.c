@@ -580,7 +580,7 @@ void DrawCircle(bitmap_t* bm, uint32_t x0, uint32_t y0, uint32_t r, uint32_t rgb
     
 }
 
-//flood fill seems to fail occaionally
+//flood fill seems to fail occaionally on VirtualBox...
 void FloodFill(bitmap_t* bm, uint32_t x, uint32_t y, uint32_t rgb){
         
     // Get Target Colour
@@ -833,7 +833,120 @@ colour_t GetColour(palette_t* palette, uint32_t index){
 }
 
 
-void ChangeFrameBufferPrivate(void* address,uint32_t width, uint32_t height, uint32_t bpp){
+bitmap_t* ConvertIndexImageToBitmap(uint8_t* iImage, uint32_t w, uint32_t h, palette_t* palette){
+    
+    bitmap_t* image = NewBitmap(w,h);
+    uint32_t i = 0;
+    
+
+    
+    for(uint32_t y = 0; y < h; ++y){
+        for(uint32_t x = 0; x < w; ++x){
+            
+            uint32_t* colour = (uint32_t*) &palette->colour[ iImage[i] ]; // this is quite a hack... forcing the four 8bit components of the colour_t into a single 32bit value.
+            
+            put_pixel32(image,x,y,*colour);
+            i += 1;
+        }
+        
+        
+    }
+    
+    
+    return image;
+}
+
+
+void SetCursorImage(bitmap_t* bitmap){
+    graphics.cursorBitmapImage = bitmap;
+}
+
+void ClearCursor(){
+    
+    uint32_t* p = graphics.frameBuffer.buffer;
+    uint32_t index = 0;
+    uint32_t* bs = graphics.cursorBackingStore->buffer;
+    
+    uint32_t w = graphics.cursorSize;
+    uint32_t h = graphics.cursorSize;
+    
+    
+    if(graphics.cursorX + w >= graphics.frameBuffer.width){w = graphics.frameBuffer.width - graphics.cursorX;}
+    if(graphics.cursorY + h >= graphics.frameBuffer.height){h = graphics.frameBuffer.height - graphics.cursorY;}
+    
+    for(uint32_t y = 0; y<h;++y){
+        
+        movsd(&p[((graphics.cursorY+y)*graphics.frameBuffer.width)+graphics.cursorX],&bs[index],w);
+        
+        index += graphics.cursorSize;
+        
+    }
+
+}
+
+void DrawCursor(uint32_t x, uint32_t y){
+
+    graphics.cursorX = x;
+    graphics.cursorY = y;
+    
+    if(graphics.cursorBitmapImage == NULL){
+        return;
+    }
+    
+    //Get the framebuffer
+    uint32_t* p = graphics.frameBuffer.buffer;
+    
+    //Get the backingstore
+    uint32_t* bs = graphics.cursorBackingStore->buffer;
+    
+    //save background
+    uint32_t w = graphics.cursorSize;
+    uint32_t h = graphics.cursorSize;
+    uint32_t index = 0;
+    
+    if(graphics.cursorX + graphics.cursorSize >= graphics.frameBuffer.width){w = graphics.frameBuffer.width - graphics.cursorX;}
+    if(graphics.cursorY + graphics.cursorSize >= graphics.frameBuffer.height){h = graphics.frameBuffer.height - graphics.cursorY;}
+    
+    for(uint32_t wy = 0; wy<h;++wy){
+        
+        movsd(&bs[index],&p[(( graphics.cursorY + wy)*graphics.frameBuffer.width) + graphics.cursorX],w);
+        
+        index += graphics.cursorSize;
+        
+    }
+    
+    
+    //Draw cursor image
+    
+    uint32_t* buffer = graphics.cursorBitmapImage->buffer;
+    
+    int i = 0;
+    
+
+    
+    for(uint32_t sy = 0; sy < h; ++sy){
+        for(uint32_t sx = 0; sx < w; ++sx){
+            
+            uint32_t colour = buffer[ (sy * graphics.cursorBitmapImage->width) + sx];
+            
+           if( colour != 0){
+               p[((sy+y) * graphics.frameBuffer.width) + (sx+x)] = colour;
+           }
+        
+            i++;
+        }
+    }
+
+}
+
+void ChangeFrameBufferPrivate(void* address,uint32_t width, uint32_t height, uint32_t bpp, bool hasHardwareCursor){
+    
+    
+    if(hasHardwareCursor == false && graphics.cursorBackingStore == NULL){
+        graphics.cursorSize = 44;
+        graphics.cursorBackingStore = NewBitmap(graphics.cursorSize,graphics.cursorSize);
+        
+    }
     
     //Do something if we already have a framebuffer
     if(graphics.frameBuffer.buffer != NULL){
@@ -915,7 +1028,12 @@ void LoadGraphicsLibrary(){
     graphics.CreatePalette  = CreatePalette;
     graphics.SetColour      = SetColour;
     graphics.GetColour      = GetColour;
-            
+    
+    graphics.ConvertIndexImageToBitmap = ConvertIndexImageToBitmap;
+    graphics.SetCursorImage = SetCursorImage;
+    graphics.ClearCursor    = ClearCursor;
+    graphics.DrawCursor     = DrawCursor;
+    
     graphics.ChangeFrameBufferPrivate = ChangeFrameBufferPrivate;
 
 }

@@ -55,6 +55,8 @@ struct window_t{
     bool noRise;             //no clicking to front
     bool isBusy;             //window busy, show busy pointer and should not receive events
     bitmap_t* bitmap;
+    bitmap_t* normalMouseImage;
+    bitmap_t* busyMouseImage;
     list_t gadgetList;
     
     lock_t clipRectsLock;   //always lock the cliprects list before using.
@@ -94,6 +96,10 @@ struct gadget_t{
 };
 
 //These don't need to be powers of two, I should change them
+#define WINDOW_EVENT    0x1     // from intuition to a window
+#define WINDOW_COMMAND  0x2     // from the window to intution
+
+
 #define WINDOW_EVENT_RESIZE                 0x1
 #define WINDOW_EVENT_RESIZE_END             0x2
 #define WINDOW_EVENT_KEYDOWN                0x4
@@ -119,10 +125,14 @@ struct gadget_t{
 #define WINDOW_DRAW_FLAG_NOFILL         0x0
 #define WINDOW_DRAW_FLAG_FILL           0x1
 
-// the event stucture is overloaded at the moment for draw commands, I will define a special event structure for this in future.
+// the event stucture is overloaded at the moment... and needs a proper overhaul.
+// THere will be an event type: which will determine the direction of the event a broad category of event
+// And flags so multiple "events" can be combined into a single dispatch.
+
 typedef struct{
     message_t   message;
-    uint64_t    flags;
+    uint32_t    event;      // event type
+    uint32_t    flags;
     window_t*   window;
     gadget_t*   gadget;     // string pointer
     void*       data;       // draw colour
@@ -148,51 +158,7 @@ typedef struct{
 
 typedef struct{
     library_t library;
-    bool needsUpdate;
-    graphics_t* graphics;       //Eventually the intuition library will need to open the gfx library
-    palette_t* systemColours;   //Move all window decoration drawing operations to a common palette... eventually
-    
-    //it's a bit messy to have these defined here, so will move all this to a proper palette structure.
-    //all the decoration drawing functions will need to be updated to be palette aware.
-    uint32_t blue;
-    uint32_t white;
-    uint32_t orange;
-    uint32_t black;
-    uint32_t grey;
-    uint32_t red;
-    uint32_t grey2;
-    uint32_t blue2;
-    uint32_t backgroundColour;
-    uint32_t defaultWindowForegroundColour;
-    uint32_t defaultWindowBackgroundColour;
-    uint32_t defaultWindowHighlightColour;
-    
-    uint8_t* defaultFont;
-    uint32_t screenWidth;
-    uint32_t screenHeight;
-    uint8_t* mouseImage;
-    uint8_t* normalMouseImage;
-    uint8_t* busyMouseImage;
-    uint64_t doubleClickTime;
-    bool windowAutorise;
-    
-    void (*DrawSystemDepthGadget)(gadget_t*);
-    uint32_t systemDepthX;
-    uint32_t systemDepthY;
-    uint32_t systemDepthW;
-    uint32_t systemDepthH;
-    uint32_t systemDepthFlags;
-    void (*DrawSystemSizeGadget)(gadget_t*);
-    uint32_t systemSizeX;
-    uint32_t systemSizeY;
-    uint32_t systemSizeW;
-    uint32_t systemSizeH;
-    uint32_t systemSizeFlags;
-    void (*DrawSystemCloseGadget)(gadget_t*);
-    uint32_t systemCloseX;
-    uint32_t systemCloseY;
-    uint32_t systemCloseW;
-    uint32_t systemCloseH;
+
     void (*Update)(void);
     window_t* (*OpenWindow)(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
     void (*CloseWindow)(window_t* window);
@@ -223,9 +189,68 @@ typedef struct{
     void (*updateLayers)(window_t* window);
     gadget_t* (*CreateGadget)(window_t* window,uint32_t flags);
     window_t* (*Request)(char* title);
+    void (*Redraw)(window_t* window);
+    
     
     //Private functions may be removed
     window_t* (*OpenWindowPrivate)(window_t* parent,uint32_t x, uint32_t y, uint32_t w, uint32_t h,uint64_t flags,char* title);
+    
+    
+    
+    //Data Area. Only to be accesssed by the designated accessor functions
+    
+    bool needsUpdate;           //Only bother to do any redrawing if something has changed
+    graphics_t* graphics;       //Eventually the intuition library will need to open the gfx library
+    palette_t* systemColours;   //Move all window decoration drawing operations to a common palette... eventually
+    
+    //it's a bit messy to have these defined here, so will move all this to a proper palette structure.
+    //all the decoration drawing functions will need to be updated to be palette aware.
+    uint32_t blue;
+    uint32_t white;
+    uint32_t orange;
+    uint32_t black;
+    uint32_t grey;
+    uint32_t red;
+    uint32_t grey2;
+    uint32_t blue2;
+    uint32_t backgroundColour;
+    uint32_t defaultWindowForegroundColour;
+    uint32_t defaultWindowBackgroundColour;
+    uint32_t defaultWindowHighlightColour;
+    
+    uint8_t* defaultFont;
+    uint32_t screenWidth;
+    uint32_t screenHeight;
+    //uint8_t* mouseImage;
+    //uint8_t* normalMouseImage;
+    //uint8_t* busyMouseImage;
+        
+    bitmap_t* normalMouseImage;
+    bitmap_t* busyMouseImage;
+    
+    uint64_t doubleClickTime;
+    bool windowAutorise;
+    
+    void (*DrawSystemDepthGadget)(gadget_t*);
+    uint32_t systemDepthX;
+    uint32_t systemDepthY;
+    uint32_t systemDepthW;
+    uint32_t systemDepthH;
+    uint32_t systemDepthFlags;
+    void (*DrawSystemSizeGadget)(gadget_t*);
+    uint32_t systemSizeX;
+    uint32_t systemSizeY;
+    uint32_t systemSizeW;
+    uint32_t systemSizeH;
+    uint32_t systemSizeFlags;
+    void (*DrawSystemCloseGadget)(gadget_t*);
+    uint32_t systemCloseX;
+    uint32_t systemCloseY;
+    uint32_t systemCloseW;
+    uint32_t systemCloseH;
+    
+    
+    
     
     list_t* windowList;
     messagePort_t* intuiPort;

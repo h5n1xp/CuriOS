@@ -69,7 +69,8 @@ void InputTaskEntry(){
                 if(event->flags & WINDOW_EVENT_REQUEST_OPEN_WINDOW){
 
                     executive->Enqueue( intuibase->windowList, (node_t*)event->window);
-                    event->window->needsRedraw = true;
+                    //event->window->needsRedraw = true;
+                    intuibase->Redraw(event->window);
                     intuibase->updateLayers(event->window);
                     
                 }
@@ -78,7 +79,8 @@ void InputTaskEntry(){
 
                     executive->Remove( intuibase->windowList, (node_t*)event->window);
                     window_t* newFront = (window_t*)intuibase->windowList->pred;
-                    newFront->needsRedraw = true;
+                    //newFront->needsRedraw = true;
+                    intuibase->Redraw(newFront);
                     intuibase->updateLayers(NULL);
             
                 }

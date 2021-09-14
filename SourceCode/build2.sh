@@ -5,7 +5,7 @@ i686-elf-gcc -T ./linker.ld -o kernel.elf -ffreestanding -O3 -nostdlib ./*.o -lg
 hdiutil attach ./disk.img
 cp ./kernel.elf /Volumes/KICKSTART/kernel.elf
 hdiutil detach /Volumes/KICKSTART
-qemu-system-x86_64 -m 128m -vga std -drive format=raw,file="./disk.img" -boot menu=off -device qemu-xhci
+qemu-system-x86_64 -m 128m -vga virtio -drive format=raw,file="./disk.img" -boot menu=off -device qemu-xhci
 
 # USB stuff
 # https://www.kraxel.org/blog/2018/08/qemu-usb-tips/
