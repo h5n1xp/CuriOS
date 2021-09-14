@@ -15,7 +15,7 @@ executive_t* executive __attribute__ ((section (".executive"))) = {0};
 const char VERSTAG[] = "\0$VER: Bouncy 0.1a (06/08/2021) by Matt Parsons";
 
 
-intuition_t* intuibase = (intuition_t*) 1; //setting the value to 1 so the compiler doesn't try to put it in the BSS section, becasue my loader don't make one yet.
+intuition_t* intuibase;
 
 
 float* x;
