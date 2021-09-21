@@ -48,13 +48,6 @@
 
 typedef struct ioRequest_t ioRequest_t;
 
-typedef struct{
-    library_t library;
-    void (*BeginIO)(ioRequest_t*);
-    void (*AbortIO)(ioRequest_t*);
-    list_t unitList;
-    task_t* task;
-} device_t;
 
 typedef struct{
     node_t node;
@@ -62,6 +55,22 @@ typedef struct{
     uint64_t flags;
     uint64_t openCount;
 } unit_t;
+
+
+typedef struct{
+    library_t library;
+    unit_t*  (*GetUnit)(uint64_t number);
+    uint64_t (*UnitCount)();
+    void     (*BeginIO)(ioRequest_t*);
+    void     (*AbortIO)(ioRequest_t*);
+    
+    
+    //Private data area
+    
+    list_t  unitList;
+    task_t* task;
+} device_t;
+
 
 struct ioRequest_t{
     message_t message;

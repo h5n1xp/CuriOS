@@ -544,7 +544,7 @@ executable_t LoadELF(file_t* file){
 }
 
 
-void InitDOS(library_t* library){
+uint32_t InitDOS(library_t* library){
     //called by AddLibrary(), does the library set up.
     
     InitList(&dos.dosList);
@@ -581,7 +581,7 @@ void InitDOS(library_t* library){
     
     if(fat->Mount(bootDOSEntry)){;
         //the handler didn't mount :-(
-        return;
+        return LIBRARY_INIT_FAIL;
     }
     //if we get this far the dos entry is vaild, so add it to the doslist!
     dos.AddDosEntry(bootDOSEntry);
@@ -589,7 +589,7 @@ void InitDOS(library_t* library){
     //set the progdir to the boot disk
     executive->thisTask->progdir = executive->AllocMem(5,0); //need 5 bytes, the name plus null
     strcpy(executive->thisTask->progdir,"dh0:");
-    return;
+    return LIBRARY_INIT_SUCCESS;
     
     
     

@@ -843,9 +843,7 @@ bitmap_t* ConvertIndexImageToBitmap(uint8_t* iImage, uint32_t w, uint32_t h, pal
     for(uint32_t y = 0; y < h; ++y){
         for(uint32_t x = 0; x < w; ++x){
             
-            uint32_t* colour = (uint32_t*) &palette->colour[ iImage[i] ]; // this is quite a hack... forcing the four 8bit components of the colour_t into a single 32bit value.
-            
-            put_pixel32(image,x,y,*colour);
+            put_pixel32(image,x,y,palette->colour[ iImage[i] ].data);
             i += 1;
         }
         
@@ -988,10 +986,13 @@ void ChangeFrameBufferPrivate(void* address,uint32_t width, uint32_t height, uin
     graphics.frameBuffer.bpp = bpp;
 }
 
-void InitGraphics(library_t* library){
+uint32_t InitGraphics(library_t* library){
     //perhaps check for a proper gfx card here?
     library->node.type  = NODE_LIBRARY;
     library->node.name  = "graphics.library";
+    
+    return LIBRARY_INIT_SUCCESS;
+    
 }
 
 library_t* OpenGraphics(library_t* library){

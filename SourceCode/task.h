@@ -23,6 +23,15 @@
 #define TASK_ENDED 4
 
 
+//Only full tasks (Processes?) need a DOS context, a simple threads need not allocate one
+typedef struct{
+    void* dosPort;      //Rendezvous port for all DOS operations
+    uint64_t dosError;  //Value set by the last DOS operation
+    void* stdout;       //IORequest for writing to the console
+    char* progdir;      //path to which all dos operations are relative
+} dosContext_t;
+
+
 typedef struct task_t task_t;
 struct task_t{
     node_t node;
@@ -34,9 +43,12 @@ struct task_t{
     int32_t forbidCount; //Forbid() shuts down multitasking on all CPUs, it's use is being phased out, and the function will be deprecated.
     task_t* parent;
     void* rendezvousPort;   //Task's primary communication port
+    dosContext_t* DOSContext;
+
     void* dosPort;      //Rendezvous port for all DOS operations
     uint64_t dosError;  //Value set by the last DOS operation
     char* progdir;      //path to which all dos operations are relative
+    
     list_t memoryList;
     int (*entry)(void);
     int (*exit)(void);      //To be automatically called when signal 0x1 is recevied;

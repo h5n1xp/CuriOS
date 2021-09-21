@@ -496,13 +496,15 @@ void getVolumeBootRecord(file_t* file){
 }
 
 
-void FATInit(){
+uint32_t FATInit(){
     // called by AddDevice();
     //debug_write_string("FAT Handler added\n");
     fatHandler.handler.isMounted = false;
     fatHandler.handler.device.library.node.name = "fat.handler";
     fatHandler.handler.device.library.node.type = NODE_HANDLER;
 
+    return LIBRARY_INIT_SUCCESS;
+    
 }
 
 library_t* FATOpen(library_t* lib){

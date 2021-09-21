@@ -153,6 +153,7 @@ typedef struct{
 #define WINDOW_BORDERLESS   0x40
 #define WINDOW_VSYNC        0x80    // With this flag the window will be sent VSYNC events
 #define WINDOW_KEYBOARD     0x100   // Allow the window to accept Keyboard events
+#define WINDOW_FOCUS        0x200   // Not sure I really want this... I don't like programs being able to manipulate the GUI
 
 
 
@@ -213,6 +214,7 @@ typedef struct{
     uint32_t red;
     uint32_t grey2;
     uint32_t blue2;
+    uint32_t greenGEM;
     uint32_t backgroundColour;
     uint32_t defaultWindowForegroundColour;
     uint32_t defaultWindowBackgroundColour;
@@ -221,9 +223,6 @@ typedef struct{
     uint8_t* defaultFont;
     uint32_t screenWidth;
     uint32_t screenHeight;
-    //uint8_t* mouseImage;
-    //uint8_t* normalMouseImage;
-    //uint8_t* busyMouseImage;
         
     bitmap_t* normalMouseImage;
     bitmap_t* busyMouseImage;

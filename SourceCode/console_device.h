@@ -12,7 +12,18 @@
 
 #include "device.h"
 
+typedef struct{
+    device_t device;
+    
+} console_device_t;
 
+typedef struct{
+    unit_t unit;
+    unit_t consoleNumber;
+} console_unit_t;
 
+extern console_device_t console;
+
+void LoadConsoleDevice(void);
 
 #endif /* console_device_h */

@@ -110,6 +110,8 @@ typedef struct{
     
     string_t* (*CreateString)(uint64_t length); //length of the printable characters, all strings are automatically null terminated
 
+    void (*SetConsole)(ioRequest_t* stdout);    //Set the output console fall all DOS operations. This is 
+    
 }dos_t;
 
 

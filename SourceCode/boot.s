@@ -25,8 +25,8 @@
 //.set width, 1920    //1024 //1280 /1280 /640 /1440
 //.set height, 1080    //768 //800 /720 /480 /900
 
-//.set width, 3840    NOT SUPPORTED BY VBE
-//.set height, 2160   NOT SUPPORTED BY VBE
+//.set width, 3840    //NOT SUPPORTED BY VBE
+//.set height, 2160  // NOT SUPPORTED BY VBE
 
 
 .set depth, 32
@@ -79,14 +79,10 @@ tss_esp0:
 tss_esp1:
 .skip 104
 stack_bottom:
-.skip 65536 # 64 KiB boot stack
+.skip 2048//65536 # 64 KiB boot stack
 .global stack_top
 stack_top:
-/*
-.skip 16384 # 16 KiB
-.global supervisor_stack_top
-supervisor_stack_top:
-*/
+
 
 /*
 The linker script specifies _start as the entry point to the kernel and the

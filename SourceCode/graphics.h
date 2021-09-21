@@ -24,13 +24,18 @@ typedef struct{
 
 
 
-typedef struct{
-    uint8_t blue;
-    uint8_t green;
-    uint8_t red;
-    uint8_t alpha;
-} colour_t;
 
+typedef struct{
+    union{
+        struct{
+            uint8_t blue;
+            uint8_t green;
+            uint8_t red;
+            uint8_t alpha;
+        };
+        uint32_t data;
+    };
+} colour_t;
 
 typedef struct{
     node_t node;

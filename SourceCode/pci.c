@@ -26,8 +26,7 @@ uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offs
     uint16_t tmp = 0;
  
     /* create configuration address as per Figure 1 */
-    address = (uint32_t)((lbus << 16) | (lslot << 11) |
-              (lfunc << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
+    address = (uint32_t)((lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
  
     /* write out the address */
     outl(CONFIG_ADDRESS, address);
@@ -39,7 +38,7 @@ uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offs
 
 
 
-void InitPCI(library_t* lib){
+uint32_t InitPCI(library_t* lib){
     
     InitList(&pci.device.unitList);
     InitList(&pci.PCIDeviceList);
@@ -129,7 +128,7 @@ void InitPCI(library_t* lib){
     }
     
     
-    
+    return LIBRARY_INIT_SUCCESS;
     
 }
 

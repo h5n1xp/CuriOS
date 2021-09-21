@@ -419,7 +419,11 @@ void CloseLibrary(library_t* library){
 
 void AddLibrary(library_t* library){
     
-    library->Init(library);
+    uint32_t status = library->Init(library);
+    
+    if(status==LIBRARY_INIT_FAIL){
+        return;
+    }
     
     AddTail(&executive->libraryList,(node_t*)library);
     
@@ -427,7 +431,12 @@ void AddLibrary(library_t* library){
 
 void AddDevice(device_t* device){
     
-    device->library.Init(&device->library);
+    uint32_t status = device->library.Init(&device->library);
+    
+    if(status==LIBRARY_INIT_FAIL){
+        return;
+    }
+    
     
     /* // now isn't the correct time to check to see what units the device may have.
     // But it might be an idea to check for an error as the device may fail init and so not be vaild
@@ -459,21 +468,13 @@ uint64_t OpenDevice(char* name,uint32_t unitNumber,ioRequest_t* ioRequest,uint64
         return DEVICE_ERROR_DEVICE_NOT_FOUND;
     }
 
-    
-    if(device->unitList.count < (unitNumber+1) ){
+
+    if(device->UnitCount() < (unitNumber+1) ){
         ioRequest->error = -1;
         return DEVICE_ERROR_UNIT_NOT_FOUND;
     }
     
-    uint32_t index = 0;
-    node = device->unitList.head;
-    
-    while(index < unitNumber){
-        node = node->next;
-        index +=1;
-    }
-    
-    unit_t* unit =(unit_t*)node;
+    unit_t* unit = device->GetUnit(unitNumber);
     unit->openCount += 1;
     
     if(flags == 0){
@@ -481,7 +482,7 @@ uint64_t OpenDevice(char* name,uint32_t unitNumber,ioRequest_t* ioRequest,uint64
     }
     
 
-    ioRequest->unit = (unit_t*)node;
+    ioRequest->unit = unit;
     ioRequest->error = 0;
     
     return DEVICE_NO_ERROR;
@@ -538,7 +539,7 @@ uint64_t DeviceUnitCount(char* name){
     device_t* device = (device_t*)node;
     
     //No available units
-    if(device->unitList.count < 1 ){
+    if(device->UnitCount() < 1 ){
         return 0;
     }
     

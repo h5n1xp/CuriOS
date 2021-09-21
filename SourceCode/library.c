@@ -9,11 +9,13 @@
 
 library_t LibExample;
 
-void LibInit(library_t* library){
+uint32_t LibInit(library_t* library){
     //Called by AddLibrary() function in the Executive
     library->baseLibrary = library;
     library->node.type   = NODE_LIBRARY;
     library->node.name   = "example.library";
+    
+    return LIBRARY_INIT_SUCCESS;
 }
 
 library_t* LibOpen(library_t* library){

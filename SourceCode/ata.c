@@ -170,7 +170,7 @@ int ATATaskEntry(){
     
 }
 
-void InitATA(library_t* lib){
+uint32_t InitATA(library_t* lib){
     
     InitList(&ata.device.unitList);
     
@@ -314,7 +314,7 @@ void InitATA(library_t* lib){
     //debug_write_string(" unit on signal: ");
     //debug_write_dec(ATAPort->sigNum);debug_write_string(" \n");
     
-    
+    return LIBRARY_INIT_SUCCESS;
     
 }
 
@@ -323,6 +323,16 @@ library_t* ATAOpen(library_t* lib){
     lib->openCount += 1;
     //debug_write_string("ATA Device:Opened!\n");
     return lib;
+}
+
+unit_t* ATAGetUnit(uint64_t number){
+   
+    return (unit_t*) executive->ItemAtIndex(&ata.device.unitList,number);
+
+}
+
+uint64_t ATAUnitCount(){
+    return ata.device.unitList.count;
 }
 
 void ATAClose(library_t* lib){
@@ -352,5 +362,7 @@ void LoadATADevice(){
     ata.device.library.Close            = ATAClose;
     ata.device.library.Init             = InitATA;
     ata.device.library.baseLibrary      = &ata.device.library;
+    ata.device.GetUnit                  = ATAGetUnit;
+    ata.device.UnitCount                = ATAUnitCount;
     ata.device.BeginIO                  = ATABeginIO;
 }
