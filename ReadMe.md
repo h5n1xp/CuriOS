@@ -55,6 +55,21 @@ Things to note:
 11. I plan to add an Application framework built on Objective-C using Jonathan Schleifer's Obj-FW runtime. This should hide the complexity of developing GUI applications, but CLI applications will probably still need to deal with the lower level system components.
 
 
-CuriOS2
+#CuriOS2
 As of September 2022, I started refactoring the code to clean up the inconsistencies in the code base. 
 Have restructured the system library objects, THis has moved them away from the traditional Amiga Exec structure, and making them closer in design to C++ objects, this has also alowed me to run the "User Space" on top of a Unix kernel (using a thin shim) and has made development/debugging much easier.
+
+When opening a library or device, all tasks receive an instance of that library with consists of a data structure which looks like this:
+
+struct library_t{
+    node_t node;
+    libCommon_t* common;
+    task_t* thisTask;
+    void* priv;
+    void* lib;
+    void* data;
+    //below this point is where the library instance data can be found.
+    int someData;
+}
+
+As a user you would generally only access the lib pointer which is in effect the vtable for the object.
