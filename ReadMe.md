@@ -56,3 +56,5 @@ Things to note:
 
 
 CuriOS2
+As of September 2022, I started refactoring the code to clean up the inconsistencies in the code base. 
+Have restructured the system library objects, THis has moved them away from the traditional Amiga Exec structure, and making them closer in design to C++ objects, this has also alowed me to run the "User Space" on top of a Unix kernel (using a thin shim) and has made development/debugging much easier.
