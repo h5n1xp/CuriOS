@@ -53,3 +53,6 @@ Things to note:
 10. There is no documentation... yet :-)
 
 11. I plan to add an Application framework built on Objective-C using Jonathan Schleifer's Obj-FW runtime. This should hide the complexity of developing GUI applications, but CLI applications will probably still need to deal with the lower level system components.
+
+
+CuriOS2
